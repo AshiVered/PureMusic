@@ -16,10 +16,17 @@ import com.metrolist.music.db.entities.Song
 import com.metrolist.music.utils.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+
+data class ApprovedArtistsState(
+    val filterEnabled: Boolean = false,
+    val approvedIds: Set<String> = emptySet(),
+    val approvedNames: Set<String> = emptySet(),
+)
 
 @Singleton
 class ArtistFilterRepository @Inject constructor(
@@ -29,40 +36,74 @@ class ArtistFilterRepository @Inject constructor(
     val isFilterEnabled: Flow<Boolean> = context.dataStore.data
         .map { it[PureMusicArtistFilterEnabledKey] ?: false }
 
+    /** Triple<filterEnabled, approvedArtistIds, approvedArtistNames> — reactive, for ViewModels */
+    val approvedArtistIdsFlow: Flow<Triple<Boolean, Set<String>, Set<String>>> =
+        combine(isFilterEnabled, database.approvedArtists()) { enabled, artists ->
+            Triple(
+                enabled,
+                artists.map { it.artistId }.toSet(),
+                artists.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet(),
+            )
+        }
+
     suspend fun isFilterCurrentlyEnabled(): Boolean =
         isFilterEnabled.first()
 
     suspend fun filterYTItems(items: List<YTItem>): List<YTItem> {
         if (!isFilterCurrentlyEnabled()) return items
-        val approvedIds = database.approvedArtistIds().toSet()
+        val approved = database.approvedArtists().first()
+        val approvedIds = approved.map { it.artistId }.toSet()
+        val approvedNames = approved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
         return items.filter { item ->
             when (item) {
-                is SongItem -> item.artists.any { it.id != null && it.id in approvedIds }
-                is AlbumItem -> item.artists.orEmpty().any { it.id != null && it.id in approvedIds }
-                is ArtistItem -> item.id in approvedIds
-                else -> true
+                is SongItem -> item.artists.isNotEmpty() && item.artists.any {
+                    (it.id != null && it.id in approvedIds) ||
+                    (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                }
+                is AlbumItem -> item.artists.orEmpty().isNotEmpty() && item.artists.orEmpty().any {
+                    (it.id != null && it.id in approvedIds) ||
+                    (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                }
+                is ArtistItem -> item.id in approvedIds || item.title.trim().lowercase() in approvedNames
+                else -> false
             }
         }
     }
 
     suspend fun filterSongs(songs: List<Song>): List<Song> {
         if (!isFilterCurrentlyEnabled()) return songs
-        val approvedIds = database.approvedArtistIds().toSet()
-        return songs.filter { song -> song.artists.any { it.id in approvedIds } }
+        val approved = database.approvedArtists().first()
+        val approvedIds = approved.map { it.artistId }.toSet()
+        val approvedNames = approved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+        return songs.filter { song ->
+            song.artists.isNotEmpty() && song.artists.any {
+                it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+            }
+        }
     }
 
     suspend fun filterSongItems(songs: List<SongItem>): List<SongItem> {
         if (!isFilterCurrentlyEnabled()) return songs
-        val approvedIds = database.approvedArtistIds().toSet()
+        val approved = database.approvedArtists().first()
+        val approvedIds = approved.map { it.artistId }.toSet()
+        val approvedNames = approved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
         return songs.filter { song ->
-            song.artists.any { it.id != null && it.id in approvedIds }
+            song.artists.isNotEmpty() && song.artists.any {
+                (it.id != null && it.id in approvedIds) ||
+                (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+            }
         }
     }
 
     suspend fun isSongItemAllowed(song: SongItem): Boolean {
         if (!isFilterCurrentlyEnabled()) return true
-        val approvedIds = database.approvedArtistIds().toSet()
-        return song.artists.any { it.id != null && it.id in approvedIds }
+        val approved = database.approvedArtists().first()
+        val approvedIds = approved.map { it.artistId }.toSet()
+        val approvedNames = approved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+        return song.artists.isNotEmpty() && song.artists.any {
+            (it.id != null && it.id in approvedIds) ||
+            (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+        }
     }
 
     suspend fun isArtistAllowed(artistId: String): Boolean {
@@ -70,4 +111,3 @@ class ArtistFilterRepository @Inject constructor(
         return database.isArtistApproved(artistId)
     }
 }
-

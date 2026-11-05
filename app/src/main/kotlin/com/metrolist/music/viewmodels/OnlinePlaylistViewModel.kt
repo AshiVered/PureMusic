@@ -38,7 +38,8 @@ import javax.inject.Inject
 class OnlinePlaylistViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
-    private val database: MusicDatabase
+    private val database: MusicDatabase,
+    private val artistFilterRepository: com.metrolist.music.puremusic.ArtistFilterRepository,
 ) : ViewModel() {
     private val playlistId = savedStateHandle.get<String>("playlistId")!!
 
@@ -265,11 +266,13 @@ class OnlinePlaylistViewModel @Inject constructor(
         fetchInitialPlaylistData() // This will also restart proactive loading if applicable
     }
 
-    private fun applySongFilters(songs: List<SongItem>): List<SongItem> {
+    private suspend fun applySongFilters(songs: List<SongItem>): List<SongItem> {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-        return songs
-            .distinctBy { it.id }
-            .filterVideoSongs(hideVideoSongs)
+        return artistFilterRepository.filterSongItems(
+            songs
+                .distinctBy { it.id }
+                .filterVideoSongs(hideVideoSongs)
+        )
     }
 
     override fun onCleared() {

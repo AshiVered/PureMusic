@@ -50,6 +50,7 @@ import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.playback.DownloadUtil
 import com.metrolist.music.utils.PodcastRefreshTrigger
 import com.metrolist.music.utils.SyncUtils
+import com.metrolist.music.puremusic.ArtistFilterRepository
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,6 +80,7 @@ constructor(
     database: MusicDatabase,
     downloadUtil: DownloadUtil,
     private val syncUtils: SyncUtils,
+    private val artistFilterRepository: ArtistFilterRepository,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -91,27 +93,34 @@ constructor(
     }
 
     val allSongs =
-        context.dataStore.data
-            .map {
-                Triple(
+        combine(
+            context.dataStore.data
+                .map {
                     Triple(
-                        it[SongFilterKey].toEnum(SongFilter.LIKED),
-                        it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
-                        (it[SongSortDescendingKey] ?: true),
-                    ),
-                    it[HideExplicitKey] ?: false,
-                    it[HideVideoSongsKey] ?: false
-                )
-            }.distinctUntilChanged()
-            .flatMapLatest { (filterSort, hideExplicit, hideVideoSongs) ->
-                val (filter, sortType, descending) = filterSort
-                when (filter) {
-                    SongFilter.LIBRARY -> database.songs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                    SongFilter.LIKED -> database.likedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                    SongFilter.DOWNLOADED -> database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                    SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-                }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+                        Triple(
+                            it[SongFilterKey].toEnum(SongFilter.LIKED),
+                            it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
+                            (it[SongSortDescendingKey] ?: true),
+                        ),
+                        it[HideExplicitKey] ?: false,
+                        it[HideVideoSongsKey] ?: false
+                    )
+                }.distinctUntilChanged()
+                .flatMapLatest { (filterSort, hideExplicit, hideVideoSongs) ->
+                    val (filter, sortType, descending) = filterSort
+                    when (filter) {
+                        SongFilter.LIBRARY -> database.songs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+                        SongFilter.LIKED -> database.likedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+                        SongFilter.DOWNLOADED -> database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+                        SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+                    }
+                },
+            artistFilterRepository.approvedArtistIdsFlow,
+        ) { songs, (filterEnabled, approvedIds, approvedNames) ->
+            if (filterEnabled) songs.filter { song ->
+                song.artists.isNotEmpty() && song.artists.any { it.id in approvedIds || it.name.trim().lowercase() in approvedNames }
+            } else songs
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun syncLikedSongs() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }
@@ -133,6 +142,7 @@ constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    private val artistFilterRepository: ArtistFilterRepository,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -145,20 +155,26 @@ constructor(
     }
 
     val allArtists =
-        context.dataStore.data
-            .map {
-                Triple(
-                    it[ArtistFilterKey].toEnum(ArtistFilter.LIKED),
-                    it[ArtistSortTypeKey].toEnum(ArtistSortType.CREATE_DATE),
-                    it[ArtistSortDescendingKey] ?: true,
-                )
-            }.distinctUntilChanged()
-            .flatMapLatest { (filter, sortType, descending) ->
-                when (filter) {
-                    ArtistFilter.LIKED -> database.artistsBookmarked(sortType, descending)
-                    ArtistFilter.LIBRARY -> database.artists(sortType, descending)
-                }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        combine(
+            context.dataStore.data
+                .map {
+                    Triple(
+                        it[ArtistFilterKey].toEnum(ArtistFilter.LIKED),
+                        it[ArtistSortTypeKey].toEnum(ArtistSortType.CREATE_DATE),
+                        it[ArtistSortDescendingKey] ?: true,
+                    )
+                }.distinctUntilChanged()
+                .flatMapLatest { (filter, sortType, descending) ->
+                    when (filter) {
+                        ArtistFilter.LIKED -> database.artistsBookmarked(sortType, descending)
+                        ArtistFilter.LIBRARY -> database.artists(sortType, descending)
+                    }
+                },
+            artistFilterRepository.approvedArtistIdsFlow,
+        ) { artists, (filterEnabled, approvedIds, approvedNames) ->
+            if (filterEnabled) artists.filter { it.artist.id in approvedIds || it.artist.name.trim().lowercase() in approvedNames }
+            else artists
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredArtists =
         combine(allArtists, searchQuery) { artists, query ->
@@ -311,6 +327,7 @@ constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
+    private val artistFilterRepository: ArtistFilterRepository,
 ) : ViewModel() {
     private val artistId = savedStateHandle.get<String>("artistId")!!
     val artist =
@@ -319,19 +336,26 @@ constructor(
             .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     val songs =
-        context.dataStore.data
-            .map {
-                Triple(
-                    it[ArtistSongSortTypeKey].toEnum(ArtistSongSortType.CREATE_DATE) to (it[ArtistSongSortDescendingKey]
-                        ?: true),
-                    it[HideExplicitKey] ?: false,
-                    it[HideVideoSongsKey] ?: false
-                )
-            }.distinctUntilChanged()
-            .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
-                val (sortType, descending) = sortDesc
-                database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        combine(
+            context.dataStore.data
+                .map {
+                    Triple(
+                        it[ArtistSongSortTypeKey].toEnum(ArtistSongSortType.CREATE_DATE) to (it[ArtistSongSortDescendingKey]
+                            ?: true),
+                        it[HideExplicitKey] ?: false,
+                        it[HideVideoSongsKey] ?: false
+                    )
+                }.distinctUntilChanged()
+                .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
+                    val (sortType, descending) = sortDesc
+                    database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+                },
+            artistFilterRepository.approvedArtistIdsFlow,
+        ) { songs, (filterEnabled, approvedIds, approvedNames) ->
+            if (filterEnabled) songs.filter { song ->
+                song.artists.isNotEmpty() && song.artists.any { it.id in approvedIds || it.name.trim().lowercase() in approvedNames }
+            } else songs
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 }
 
 @HiltViewModel

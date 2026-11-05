@@ -116,37 +116,91 @@ class HomeViewModel @Inject constructor(
     val homePage = MutableStateFlow<HomePage?>(null)
     val explorePage = MutableStateFlow<ExplorePage?>(null)
 
-    // Reactive filtered flows — re-filter whenever homePage, quickPicks, or approved list changes
-    val filteredHomePage: StateFlow<HomePage?> = combine(
-        homePage,
+    // Reactive filtered flows — re-filter whenever approved list changes
+    // Helper: shared approved IDs flow (null set = filter off)
+    private val approvedArtistIdsFlow: StateFlow<Triple<Boolean, Set<String>, Set<String>>> = combine(
         artistFilterRepository.isFilterEnabled,
         database.approvedArtists(),
-    ) { page, filterEnabled, approvedArtists ->
-        if (!filterEnabled || page == null) return@combine page
-        val approvedIds = approvedArtists.map { it.artistId }.toSet()
-        page.copy(
-            sections = page.sections.mapNotNull { section ->
-                val filtered = section.items.filter { item ->
-                    when (item) {
-                        is SongItem -> item.artists.any { it.id != null && it.id in approvedIds }
-                        is AlbumItem -> item.artists.orEmpty().any { it.id != null && it.id in approvedIds }
-                        is ArtistItem -> item.id in approvedIds
-                        else -> true
-                    }
-                }
-                if (filtered.isEmpty()) null else section.copy(items = filtered)
-            }
+    ) { enabled, approved ->
+        Triple(
+            enabled,
+            approved.map { it.artistId }.toSet(),
+            approved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet(),
         )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, Triple(false, emptySet(), emptySet()))
+
+    val filteredHomePage: StateFlow<HomePage?> = combine(
+        homePage,
+        approvedArtistIdsFlow,
+    ) { page, (filterEnabled, approvedIds, approvedNames) ->
+        if (!filterEnabled || page == null) {
+            page
+        } else {
+            page.copy(
+                sections = page.sections.mapNotNull { section ->
+                    val filtered = section.items.filter { item ->
+                        when (item) {
+                            is SongItem -> item.artists.isNotEmpty() && item.artists.any {
+                                (it.id != null && it.id in approvedIds) ||
+                                (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                            }
+                            is AlbumItem -> item.artists.orEmpty().isNotEmpty() && item.artists.orEmpty().any {
+                                (it.id != null && it.id in approvedIds) ||
+                                (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                            }
+                            is ArtistItem -> item.id in approvedIds || item.title.trim().lowercase() in approvedNames
+                            else -> false
+                        }
+                    }
+                    if (filtered.isEmpty()) null else section.copy(items = filtered)
+                }
+            )
+        }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val filteredQuickPicks: StateFlow<List<Song>?> = combine(
         quickPicks,
-        artistFilterRepository.isFilterEnabled,
-        database.approvedArtists(),
-    ) { songs, filterEnabled, approvedArtists ->
-        if (!filterEnabled || songs == null) return@combine songs
-        val approvedIds = approvedArtists.map { it.artistId }.toSet()
-        songs.filter { song -> song.artists.any { it.id in approvedIds } }
+        approvedArtistIdsFlow,
+    ) { songs, (filterEnabled, approvedIds, approvedNames) ->
+        if (!filterEnabled || songs == null) songs
+        else songs.filter { song ->
+            song.artists.isNotEmpty() && song.artists.any {
+                it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val filteredForgottenFavorites: StateFlow<List<Song>?> = combine(
+        forgottenFavorites,
+        approvedArtistIdsFlow,
+    ) { songs, (filterEnabled, approvedIds, approvedNames) ->
+        if (!filterEnabled || songs == null) songs
+        else songs.filter { song ->
+            song.artists.isNotEmpty() && song.artists.any {
+                it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val filteredKeepListening: StateFlow<List<LocalItem>?> = combine(
+        keepListening,
+        approvedArtistIdsFlow,
+    ) { items, (filterEnabled, approvedIds, approvedNames) ->
+        if (!filterEnabled || items == null) {
+            items
+        } else {
+            items.filter { item ->
+                when (item) {
+                    is Song -> item.artists.isNotEmpty() && item.artists.any {
+                        it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+                    }
+                    is Album -> item.artists.isNotEmpty() && item.artists.any {
+                        it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+                    }
+                    else -> false
+                }
+            }
+        }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
@@ -765,6 +819,21 @@ class HomeViewModel @Inject constructor(
                     wasOffline = true
                 } else if (wasOffline) {
                     wasOffline = false
+                    refresh()
+                }
+            }
+        }
+
+        // Prepare wrapped data in background
+        viewModelScope.launch(Dispatchers.IO) {
+            // PureMusic: reload home data when artist filter settings change
+            var firstEmission = true
+            (approvedArtistIdsFlow as kotlinx.coroutines.flow.Flow<*>).collect {
+                if (firstEmission) { firstEmission = false; return@collect }
+                if (isHomeDataLoaded) {
+                    quickPicks.value = null
+                    forgottenFavorites.value = null
+                    keepListening.value = null
                     refresh()
                 }
             }

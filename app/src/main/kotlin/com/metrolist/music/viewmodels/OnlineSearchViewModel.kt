@@ -105,11 +105,17 @@ constructor(
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
                     val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                    summaryPage =
+                    val filteredPage =
                         resolvedPage
                             .filterExplicit(hideExplicit)
                             .filterVideoSongs(hideVideoSongs)
                             .filterYoutubeShorts(hideYoutubeShorts)
+                    val pureMusicSummaries = filteredPage.summaries.mapNotNull { summary ->
+                        val filteredItems = artistFilterRepository.filterYTItems(summary.items)
+                        if (filteredItems.isEmpty()) null
+                        else summary.copy(items = filteredItems)
+                    }
+                    summaryPage = filteredPage.copy(summaries = pureMusicSummaries)
                 }.onFailure {
                     reportException(it)
                 }
@@ -182,10 +188,12 @@ constructor(
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-            val newItems = resolvedItems
-                .filterExplicit(hideExplicit)
-                .filterVideoSongs(hideVideoSongs)
-                .filterYoutubeShorts(hideYoutubeShorts)
+            val newItems = artistFilterRepository.filterYTItems(
+                resolvedItems
+                    .filterExplicit(hideExplicit)
+                    .filterVideoSongs(hideVideoSongs)
+                    .filterYoutubeShorts(hideYoutubeShorts)
+            )
             viewStateMap[filterValue] = ItemsPage(
                 (viewState.items + newItems).distinctBy { it.id },
                 searchResult.continuation
