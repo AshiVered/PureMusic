@@ -132,6 +132,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_ENDED
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
+import com.metrolist.music.LocalImagesEnabled
 import com.metrolist.music.LocalNavController
 import coil3.compose.AsyncImage
 import coil3.imageLoader
@@ -853,7 +854,7 @@ fun BottomSheetPlayer(
                             },
                             label = "blurBackground",
                         ) { thumbnailUrl ->
-                            if (thumbnailUrl != null) {
+                            if (thumbnailUrl != null && LocalImagesEnabled.current) {
                                 Box(modifier = Modifier.alpha(backgroundAlpha)) {
                                     AsyncImage(
                                         model =
@@ -1019,7 +1020,7 @@ fun BottomSheetPlayer(
                                             tint = textButtonColor.copy(alpha = 0.7f),
                                         )
                                     }
-                                } else {
+                                } else if (LocalImagesEnabled.current) {
                                     AsyncImage(
                                         model = mediaMetadata.thumbnailUrl,
                                         contentDescription = null,

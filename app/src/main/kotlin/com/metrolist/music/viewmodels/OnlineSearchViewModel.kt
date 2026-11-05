@@ -43,6 +43,7 @@ class OnlineSearchViewModel
 constructor(
     @ApplicationContext val context: Context,
     savedStateHandle: SavedStateHandle,
+    private val artistFilterRepository: com.metrolist.music.puremusic.ArtistFilterRepository,
 ) : ViewModel() {
     val query = SearchRoutes.decodeQuery(savedStateHandle.get<String>("query").orEmpty())
     val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
@@ -148,11 +149,13 @@ constructor(
                                 val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
                                 viewStateMap[filter.value] =
                                     ItemsPage(
-                                        resolvedItems
-                                            .distinctBy { it.id }
-                                            .filterExplicit(hideExplicit)
-                                            .filterVideoSongs(hideVideoSongs)
-                                            .filterYoutubeShorts(hideYoutubeShorts),
+                                        artistFilterRepository.filterYTItems(
+                                            resolvedItems
+                                                .distinctBy { it.id }
+                                                .filterExplicit(hideExplicit)
+                                                .filterVideoSongs(hideVideoSongs)
+                                                .filterYoutubeShorts(hideYoutubeShorts)
+                                        ),
                                         result.continuation,
                                     )
                             }.onFailure {

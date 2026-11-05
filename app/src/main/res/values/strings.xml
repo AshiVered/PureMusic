@@ -343,4 +343,14 @@
     <string name="new_version_available">New version available</string>
     <string name="translation_models">Translation Models</string>
     <string name="clear_translation_models">Clear translation models</string>
+    <string name="control_management">ניהול תוכן</string>
+    <string name="content_blocked">This content has been blocked by your settings.</string>
+    <string name="pure_music_setup_title">הגדרת סיסמת ניהול</string>
+    <string name="pure_music_enter_password">הזן סיסמה</string>
+    <string name="pure_music_confirm_password">אמת סיסמה</string>
+    <string name="pure_music_wrong_password">סיסמה שגויה</string>
+    <string name="pure_music_passwords_mismatch">הסיסמאות אינן תואמות</string>
+    <string name="approved_artists">אמנים מאושרים</string>
+    <string name="artist_filter_enabled">סינון אמנים מופעל</string>
+    <string name="images_enabled">הצגת תמונות מופעלת</string>
 </resources>

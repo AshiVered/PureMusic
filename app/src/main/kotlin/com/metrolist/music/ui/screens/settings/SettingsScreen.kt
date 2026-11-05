@@ -267,6 +267,20 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // PureMusic — Control & Management
+        Material3SettingsGroup(
+            title = "שליטה ובקרה",
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.lock),
+                    title = { Text("ניהול תוכן") },
+                    onClick = { navController.navigate("settings/control") }
+                )
+            )
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 
     TopAppBar(

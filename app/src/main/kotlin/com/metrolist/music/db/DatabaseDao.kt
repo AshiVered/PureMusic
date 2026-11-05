@@ -28,6 +28,7 @@ import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.AlbumArtistMap
+import com.metrolist.music.db.entities.ApprovedArtist
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.AlbumWithSongs
 import com.metrolist.music.db.entities.Artist
@@ -2043,4 +2044,20 @@ interface DatabaseDao {
 
     @Delete
     fun delete(podcast: PodcastEntity)
+
+    // --- Approved Artists (PureMusic) ---
+    @Query("SELECT * FROM approved_artist ORDER BY name")
+    fun approvedArtists(): Flow<List<ApprovedArtist>>
+
+    @Query("SELECT artistId FROM approved_artist")
+    suspend fun approvedArtistIds(): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertApprovedArtist(artist: ApprovedArtist)
+
+    @Query("DELETE FROM approved_artist WHERE artistId = :artistId")
+    suspend fun deleteApprovedArtist(artistId: String)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM approved_artist WHERE artistId = :artistId)")
+    suspend fun isArtistApproved(artistId: String): Boolean
 }

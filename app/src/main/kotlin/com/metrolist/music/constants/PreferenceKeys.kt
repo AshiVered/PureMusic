@@ -719,3 +719,9 @@ val CountryCodeToName =
         "YE" to "Yemen",
         "ZW" to "Zimbabwe",
     )
+
+// PureMusic — Control & Management
+val PureMusicPasswordHashKey = stringPreferencesKey("pureMusicPasswordHash")
+val PureMusicImagesEnabledKey = booleanPreferencesKey("pureMusicImagesEnabled")
+val PureMusicArtistFilterEnabledKey = booleanPreferencesKey("pureMusicArtistFilterEnabled")
+

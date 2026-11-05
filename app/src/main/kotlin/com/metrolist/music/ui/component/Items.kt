@@ -102,6 +102,7 @@ import com.metrolist.music.LocalArtistNameAliases
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalNavController
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.LocalImagesEnabled
 import com.metrolist.music.R
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.GridItemSize
@@ -664,18 +665,35 @@ fun ArtistListItem(
     subtitle = if (artist.songCount > 0) pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount) else null,
     badges = badges,
     thumbnailContent = {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(artist.artist.thumbnailUrl?.resize(144, 144))
-                .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .build(),
-            contentDescription = null,
-            modifier = Modifier
-                .size(ListThumbnailSize)
-                .clip(CircleShape),
-        )
+        val imagesEnabled = LocalImagesEnabled.current
+        if (imagesEnabled) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(artist.artist.thumbnailUrl?.resize(144, 144))
+                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(ListThumbnailSize)
+                    .clip(CircleShape),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(ListThumbnailSize)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.artist),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     },
     trailingContent = trailingContent,
     modifier = modifier,
@@ -696,19 +714,36 @@ fun ArtistGridItem(
     subtitle = if (artist.songCount > 0) pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount) else "",
     badges = badges,
     thumbnailContent = {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(artist.artist.thumbnailUrl?.resize(544, 544))
-                .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(CircleShape)
-        )
+        val imagesEnabled = LocalImagesEnabled.current
+        if (imagesEnabled) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(artist.artist.thumbnailUrl?.resize(544, 544))
+                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.artist),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     },
     fillMaxWidth = fillMaxWidth,
     modifier = modifier
@@ -1478,6 +1513,7 @@ fun ItemThumbnail(
     thumbnailRatio: Float = 1f
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
+    val imagesEnabled = LocalImagesEnabled.current
     
     Box(
         contentAlignment = Alignment.Center,
@@ -1487,19 +1523,36 @@ fun ItemThumbnail(
             .clip(shape)
     ) {
         if (albumIndex == null) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(thumbnailUrl?.resize(544, 544))
-                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                    .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                    .build(),
-                contentDescription = null,
-                contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(shape)
-            )
+            if (imagesEnabled) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailUrl?.resize(544, 544))
+                        .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(shape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxSize()
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.music_note),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         if (albumIndex != null) {
@@ -1560,6 +1613,7 @@ fun LocalThumbnail(
     thumbnailRatio: Float = 1f
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
+    val imagesEnabledLocal = LocalImagesEnabled.current
     
     Box(
         contentAlignment = Alignment.Center,
@@ -1567,17 +1621,32 @@ fun LocalThumbnail(
             .aspectRatio(thumbnailRatio)
             .clip(shape)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(thumbnailUrl)
-                .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .build(),
-            contentDescription = null,
-            contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (imagesEnabledLocal) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(thumbnailUrl)
+                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = null,
+                contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant, shape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.music_note),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
 
         AnimatedVisibility(
             visible = isActive,
@@ -1666,7 +1735,8 @@ fun PlaylistThumbnail(
     cacheKey: String? = null
 ) {
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
-    
+    val imagesEnabled = LocalImagesEnabled.current
+
     when (thumbnails.size) {
         0 -> Box(
             contentAlignment = Alignment.Center,
@@ -1677,49 +1747,66 @@ fun PlaylistThumbnail(
         ) {
             placeHolder()
         }
-        1 -> AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(thumbnails[0].resize((size.value * 3).toInt()))
-                .apply { /* Removed cache key extensions due to unresolved in env */ }
-                .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                .build(),
-            contentDescription = null,
-            contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
-            placeholder = painterResource(R.drawable.queue_music),
-            error = painterResource(R.drawable.queue_music),
-            modifier = Modifier
-                .size(size)
-                .clip(shape)
-        )
+        1 -> if (imagesEnabled) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(thumbnails[0].resize((size.value * 3).toInt()))
+                    .apply { /* Removed cache key extensions due to unresolved in env */ }
+                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = null,
+                contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                placeholder = painterResource(R.drawable.queue_music),
+                error = painterResource(R.drawable.queue_music),
+                modifier = Modifier
+                    .size(size)
+                    .clip(shape)
+            )
+        } else {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(size)
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+            ) { placeHolder() }
+        }
         else -> Box(
             modifier = Modifier
                 .size(size)
                 .clip(shape)
         ) {
-            listOf(
-                Alignment.TopStart,
-                Alignment.TopEnd,
-                Alignment.BottomStart,
-                Alignment.BottomEnd
-            ).fastForEachIndexed { index, alignment ->
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnails.getOrNull(index)?.resize((size.value * 1.5).toInt()))
-                        .apply { /* Removed cache key extensions due to unresolved in env */ }
-                        .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
-                        .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
-                        .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
-                    placeholder = painterResource(R.drawable.queue_music),
-                    error = painterResource(R.drawable.queue_music),
-                    modifier = Modifier
-                        .align(alignment)
-                        .size(size / 2)
-                )
+            if (imagesEnabled) {
+                listOf(
+                    Alignment.TopStart,
+                    Alignment.TopEnd,
+                    Alignment.BottomStart,
+                    Alignment.BottomEnd
+                ).fastForEachIndexed { index, alignment ->
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(thumbnails.getOrNull(index)?.resize((size.value * 1.5).toInt()))
+                            .apply { /* Removed cache key extensions due to unresolved in env */ }
+                            .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                            .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                        placeholder = painterResource(R.drawable.queue_music),
+                        error = painterResource(R.drawable.queue_music),
+                        modifier = Modifier
+                            .align(alignment)
+                            .size(size / 2)
+                    )
+                }
+            } else {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) { placeHolder() }
             }
         }
     }

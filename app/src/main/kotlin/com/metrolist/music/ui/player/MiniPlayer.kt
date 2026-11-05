@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import com.metrolist.music.LocalImagesEnabled
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
@@ -390,7 +391,8 @@ private fun NewMiniPlayer(
         ) {
             when (miniPlayerBackground) {
                 MiniPlayerBackgroundStyle.BLUR -> {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    val imagesEnabledMini = LocalImagesEnabled.current
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && imagesEnabledMini) {
                         mediaMetadata?.thumbnailUrl?.let { url ->
                             AsyncImage(
                                 model = url,
@@ -581,12 +583,15 @@ private fun NewMiniPlayerPlayButton(
                     remember(metadata.thumbnailUrl) {
                         metadata.thumbnailUrl?.resize(120, 120)
                     }
-                AsyncImage(
-                    model = thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                )
+                val imagesEnabledCircle = LocalImagesEnabled.current
+                if (imagesEnabledCircle) {
+                    AsyncImage(
+                        model = thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    )
+                }
             }
 
             // Overlay for paused state or muted (guest)
@@ -966,15 +971,17 @@ private fun LegacyMiniMediaInfo(
                 remember(mediaMetadata.thumbnailUrl) {
                     mediaMetadata.thumbnailUrl?.resize(144, 144)
                 }
-            AsyncImage(
-                model = thumbnailUrl,
-                contentDescription = null,
-                contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(ThumbnailCornerRadius)),
-            )
+            if (LocalImagesEnabled.current) {
+                AsyncImage(
+                    model = thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(ThumbnailCornerRadius)),
+                )
+            }
 
             androidx.compose.animation.AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
                 Box(

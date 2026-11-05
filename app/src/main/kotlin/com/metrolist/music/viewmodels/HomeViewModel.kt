@@ -53,6 +53,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -96,6 +97,7 @@ class HomeViewModel @Inject constructor(
     val wrappedManager: WrappedManager,
     private val wrappedAudioService: WrappedAudioService,
     private val networkConnectivity: NetworkConnectivityObserver,
+    private val artistFilterRepository: com.metrolist.music.puremusic.ArtistFilterRepository,
 ) : ViewModel() {
     val isRefreshing = MutableStateFlow(false)
     val isLoading = MutableStateFlow(false)
@@ -113,6 +115,39 @@ class HomeViewModel @Inject constructor(
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val homePage = MutableStateFlow<HomePage?>(null)
     val explorePage = MutableStateFlow<ExplorePage?>(null)
+
+    // Reactive filtered flows — re-filter whenever homePage, quickPicks, or approved list changes
+    val filteredHomePage: StateFlow<HomePage?> = combine(
+        homePage,
+        artistFilterRepository.isFilterEnabled,
+        database.approvedArtists(),
+    ) { page, filterEnabled, approvedArtists ->
+        if (!filterEnabled || page == null) return@combine page
+        val approvedIds = approvedArtists.map { it.artistId }.toSet()
+        page.copy(
+            sections = page.sections.mapNotNull { section ->
+                val filtered = section.items.filter { item ->
+                    when (item) {
+                        is SongItem -> item.artists.any { it.id != null && it.id in approvedIds }
+                        is AlbumItem -> item.artists.orEmpty().any { it.id != null && it.id in approvedIds }
+                        is ArtistItem -> item.id in approvedIds
+                        else -> true
+                    }
+                }
+                if (filtered.isEmpty()) null else section.copy(items = filtered)
+            }
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val filteredQuickPicks: StateFlow<List<Song>?> = combine(
+        quickPicks,
+        artistFilterRepository.isFilterEnabled,
+        database.approvedArtists(),
+    ) { songs, filterEnabled, approvedArtists ->
+        if (!filterEnabled || songs == null) return@combine songs
+        val approvedIds = approvedArtists.map { it.artistId }.toSet()
+        songs.filter { song -> song.artists.any { it.id in approvedIds } }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
     private val previousHomePage = MutableStateFlow<HomePage?>(null)

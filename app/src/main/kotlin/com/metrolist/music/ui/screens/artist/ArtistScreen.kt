@@ -127,8 +127,11 @@ import com.metrolist.music.ui.utils.isScrollingUp
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.ArtistNameAliases
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.utils.dataStore
 import com.metrolist.music.viewmodels.ArtistViewModel
 import com.valentinilk.shimmer.shimmer
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -192,6 +195,21 @@ fun ArtistScreen(
     LaunchedEffect(libraryArtist) {
         // always show local page for local artists. Show local page remote artist when offline
         showLocal = libraryArtist?.artist?.isLocal == true
+    }
+
+    // PureMusic: block access to artists not on the approved list
+    LaunchedEffect(viewModel.artistId) {
+        val filterEnabled = context.dataStore.data
+            .map { it[com.metrolist.music.constants.PureMusicArtistFilterEnabledKey] ?: false }
+            .first()
+        if (filterEnabled && !database.isArtistApproved(viewModel.artistId)) {
+            android.widget.Toast.makeText(
+                context,
+                "This content has been blocked by your settings.",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            navController.popBackStack()
+        }
     }
 
     Box(

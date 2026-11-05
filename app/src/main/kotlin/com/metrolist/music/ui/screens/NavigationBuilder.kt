@@ -45,9 +45,11 @@ import com.metrolist.music.ui.screens.search.SearchScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
+import com.metrolist.music.ui.screens.settings.ApprovedArtistsScreen
 import com.metrolist.music.ui.screens.settings.AppearanceSettings
 import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
+import com.metrolist.music.ui.screens.settings.ControlManagementScreen
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.PlayerSettings
 import com.metrolist.music.ui.screens.settings.PrivacySettings
@@ -451,5 +453,13 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/android_auto") {
         AndroidAutoSettings(navController)
+    }
+
+    composable("settings/control") {
+        ControlManagementScreen(navController)
+    }
+
+    composable("settings/control/artists") {
+        ApprovedArtistsScreen(navController)
     }
 }
