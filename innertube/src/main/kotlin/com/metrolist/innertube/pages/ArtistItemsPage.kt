@@ -85,7 +85,7 @@ data class ArtistItemsPage(
                         ?.content?.musicPlayButtonRenderer?.playNavigationEndpoint
                         ?.anyWatchEndpoint?.playlistId ?: return null,
                     title = renderer.title.runs?.firstOrNull()?.text ?: return null,
-                    artists = null,
+                    artists = PageHelper.extractArtists(renderer.subtitle?.runs).ifEmpty { null },
                     year = renderer.subtitle?.runs?.lastOrNull()?.text?.toIntOrNull(),
                     thumbnail = renderer.thumbnailRenderer.getThumbnailUrl() ?: return null,
                     explicit = renderer.subtitleBadges?.find {

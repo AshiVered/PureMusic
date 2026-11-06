@@ -152,24 +152,44 @@ class HomeViewModel @Inject constructor(
                 val artistAlbums = coroutineScope {
                     approved.map { artist ->
                         async {
+                            val excludedKeywords = listOf("featured", "appears", "מופיע", "similar", "דומים", "like", "אוהבים", "תאהבו", "other", "more from", "עוד מאת")
                             val albumsFromPage = YouTube.artist(artist.artistId).getOrNull()?.let { artistPage ->
-                                artistPage.sections
+                                val ownSections = artistPage.sections.filter { section ->
+                                    val titleLower = section.title.trim().lowercase()
+                                    excludedKeywords.none { it in titleLower }
+                                }
+
+                                val directAlbums = ownSections
                                     .flatMap { it.items }
                                     .filterIsInstance<AlbumItem>()
-                            }.orEmpty()
 
-                            // Also search for albums by this artist so that even with few artists there are plenty of albums
-                            val albumsFromSearch = YouTube.search(artist.name, YouTube.SearchFilter.FILTER_ALBUM).getOrNull()?.let { searchResult ->
-                                searchResult.items.filterIsInstance<AlbumItem>()
-                            }.orEmpty()
+                                val moreAlbums = ownSections
+                                    .mapNotNull { it.moreEndpoint }
+                                    .firstOrNull()?.let { endpoint ->
+                                        YouTube.artistItems(endpoint).getOrNull()?.items?.filterIsInstance<AlbumItem>()
+                                    }.orEmpty()
 
-                            (albumsFromPage + albumsFromSearch).map { album ->
-                                if (album.artists.isNullOrEmpty()) {
-                                    album.copy(artists = listOf(Artist(name = artist.name, id = artist.artistId)))
-                                } else {
-                                    album
+                                (directAlbums + moreAlbums).map { album ->
+                                    if (album.artists.isNullOrEmpty()) {
+                                        album.copy(artists = listOf(Artist(name = artist.name, id = artist.artistId)))
+                                    } else {
+                                        album
+                                    }
                                 }
-                            }
+                            }.orEmpty()
+
+                            // Also search for albums by this artist, but strictly require the extracted artist to match this approved artist
+                            val albumsFromSearch = YouTube.search(artist.name, YouTube.SearchFilter.FILTER_ALBUM).getOrNull()?.let { searchResult ->
+                                searchResult.items.filterIsInstance<AlbumItem>().filter { album ->
+                                    val artists = album.artists.orEmpty()
+                                    artists.isNotEmpty() && artists.any { art ->
+                                        (art.id != null && art.id == artist.artistId) ||
+                                        (art.name.isNotBlank() && art.name.trim().lowercase() == artist.name.trim().lowercase())
+                                    }
+                                }
+                            }.orEmpty()
+
+                            albumsFromPage + albumsFromSearch
                         }
                     }.awaitAll().flatten()
                 }
@@ -177,9 +197,10 @@ class HomeViewModel @Inject constructor(
                 val combined = (globalMatchingReleases + artistAlbums)
                     .filterIsInstance<AlbumItem>()
                     .filter { album ->
-                        album.artists.orEmpty().isEmpty() || album.artists.orEmpty().any {
-                            (it.id != null && it.id in approvedIds) ||
-                            (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                        val albumArtists = album.artists.orEmpty()
+                        albumArtists.isNotEmpty() && albumArtists.any { art ->
+                            (art.id != null && art.id in approvedIds) ||
+                            (art.name.isNotBlank() && art.name.trim().lowercase() in approvedNames)
                         }
                     }
                     .distinctBy { it.id }
