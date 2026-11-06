@@ -52,6 +52,8 @@ import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,6 +117,63 @@ class HomeViewModel @Inject constructor(
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val homePage = MutableStateFlow<HomePage?>(null)
     val explorePage = MutableStateFlow<ExplorePage?>(null)
+    val latestSongs = MutableStateFlow<List<YTItem>>(emptyList())
+
+    suspend fun loadLatestSongs() {
+        val filterEnabled = artistFilterRepository.isFilterCurrentlyEnabled()
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+
+        if (!filterEnabled) {
+            YouTube.newReleaseAlbums().onSuccess { albums ->
+                latestSongs.value = albums
+                    .distinctBy { it.id }
+                    .filterExplicit(hideExplicit)
+            }.onFailure {
+                reportException(it)
+            }
+        } else {
+            val approved = database.approvedArtists().first()
+            val approvedIds = approved.map { it.artistId }.toSet()
+            val approvedNames = approved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+
+            if (approvedIds.isEmpty() && approvedNames.isEmpty()) {
+                latestSongs.value = emptyList()
+            } else {
+                val globalMatchingReleases = YouTube.newReleaseAlbums().getOrDefault(emptyList())
+                    .filter { album ->
+                        album.artists.orEmpty().any {
+                            (it.id != null && it.id in approvedIds) ||
+                            (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                        }
+                    }
+
+                val artistAlbums = coroutineScope {
+                    approved.map { artist ->
+                        async {
+                            YouTube.artist(artist.artistId).getOrNull()?.let { artistPage ->
+                                artistPage.sections
+                                    .filter {
+                                        it.title.contains("Albums", ignoreCase = true) ||
+                                        it.title.contains("Singles", ignoreCase = true)
+                                    }
+                                    .flatMap { it.items }
+                                    .filterIsInstance<AlbumItem>()
+                                    .take(10)
+                            }.orEmpty()
+                        }
+                    }.awaitAll().flatten()
+                }
+
+                val combined = (globalMatchingReleases + artistAlbums)
+                    .filterIsInstance<AlbumItem>()
+                    .distinctBy { it.id }
+                    .filterExplicit(hideExplicit)
+                latestSongs.value = combined
+            }
+        }
+    }
 
     // Reactive filtered flows — re-filter whenever approved list changes
     // Helper: shared approved IDs flow (null set = filter off)
@@ -529,139 +588,14 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun load() {
         isLoading.value = true
-        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-        val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-        val fromTimeStamp = LocalDateTime.now().minusWeeks(2)
-
-        // Phase 1: Load essential sections in parallel — local DB (fast) + YouTube home page.
-        // isLoading is set to false as soon as all Phase 1 tasks complete so the UI appears quickly.
-        coroutineScope {
-            launch(Dispatchers.IO) { getQuickPicks() }
-
-            launch(Dispatchers.IO) {
-                forgottenFavorites.value = database.forgottenFavorites().first()
-                    .filterVideoSongs(hideVideoSongs).shuffled().take(20)
-            }
-
-            launch(Dispatchers.IO) {
-                val songs = database.mostPlayedSongs(fromTimeStamp = fromTimeStamp, limit = 15, offset = 5, toTimeStamp = LocalDateTime.now()).first()
-                    .filterVideoSongs(hideVideoSongs).shuffled().take(10)
-                val albums = database.mostPlayedAlbums(fromTimeStamp, limit = 8, offset = 2).first()
-                    .filter { it.album.thumbnailUrl != null }.shuffled().take(5)
-                val artists = database.mostPlayedArtists(fromTimeStamp).first()
-                    .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
-                keepListening.value = (songs + albums + artists).shuffled()
-            }
-
-            launch(Dispatchers.IO) {
-                YouTube.home().onSuccess { page ->
-                    homePage.value = page.copy(
-                        sections = page.sections.mapNotNull { section ->
-                            val filtered = section.items
-                                .filterOutNulls()
-                                .filterExplicit(hideExplicit)
-                                .filterVideoSongs(hideVideoSongs)
-                                .filterYoutubeShorts(hideYoutubeShorts)
-                            if (filtered.isEmpty()) null else section.copy(items = filtered)
-                        }
-                    )
-                }.onFailure { reportException(it) }
-            }
-
-            if (YouTube.cookie != null) {
+        loadLatestSongs()
+        if (YouTube.cookie != null) {
+            coroutineScope {
                 launch(Dispatchers.IO) { loadAccountInfo() }
                 launch(Dispatchers.IO) { loadAccountPlaylists() }
             }
         }
-
-        allLocalItems.value = (quickPicks.value.orEmpty() + forgottenFavorites.value.orEmpty() + keepListening.value.orEmpty())
-            .filter { it is Song || it is Album }
         isLoading.value = false
-
-        // Phase 2: Heavy multi-request operations — run in background without blocking the UI.
-        viewModelScope.launch(Dispatchers.IO) { getDailyDiscover() }
-
-        viewModelScope.launch(Dispatchers.IO) { getCommunityPlaylists() }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            YouTube.explore().onSuccess { page ->
-                explorePage.value = page.copy(
-                    newReleaseAlbums = page.newReleaseAlbums.filterOutNulls().filterExplicit(hideExplicit),
-                    moodAndGenres = page.moodAndGenres.filterOutNulls()
-                )
-            }.onFailure { reportException(it) }
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val artistRecommendations = database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
-                .filter { it.artist.isYouTubeArtist }
-                .shuffled().take(4)
-                .mapNotNull {
-                    val items = mutableListOf<YTItem>()
-                    YouTube.artist(it.id).onSuccess { page ->
-                        page.sections.takeLast(3).forEach { section -> items += section.items }
-                    }
-                    SimilarRecommendation(
-                        title = it,
-                        items = items
-                            .distinctBy { item -> item.id }
-                            .filterExplicit(hideExplicit)
-                            .filterVideoSongs(hideVideoSongs)
-                            .shuffled().take(12)
-                            .ifEmpty { return@mapNotNull null }
-                    )
-                }
-
-            val songRecommendations = database.mostPlayedSongs(fromTimeStamp = fromTimeStamp, limit = 15, offset = 0, toTimeStamp = LocalDateTime.now()).first()
-                .filter { it.album != null }
-                .shuffled().take(3)
-                .mapNotNull { song ->
-                    val endpoint = YouTube.next(WatchEndpoint(videoId = song.id)).getOrNull()?.relatedEndpoint
-                        ?: return@mapNotNull null
-                    val page = YouTube.related(endpoint).getOrNull() ?: return@mapNotNull null
-                    SimilarRecommendation(
-                        title = song,
-                        items = (page.songs.shuffled().take(10) +
-                                page.albums.shuffled().take(5) +
-                                page.artists.shuffled().take(3) +
-                                page.playlists.shuffled().take(3))
-                            .distinctBy { it.id }
-                            .filterExplicit(hideExplicit)
-                            .filterVideoSongs(hideVideoSongs)
-                            .shuffled()
-                            .ifEmpty { return@mapNotNull null }
-                    )
-                }
-
-            val albumRecommendations = database.mostPlayedAlbums(fromTimeStamp, limit = 10).first()
-                .filter { it.album.thumbnailUrl != null }
-                .shuffled().take(2)
-                .mapNotNull { album ->
-                    val items = mutableListOf<YTItem>()
-                    YouTube.album(album.id).onSuccess { page ->
-                        page.otherVersions.let { items += it }
-                    }
-                    album.artists.firstOrNull()?.id?.let { artistId ->
-                        YouTube.artist(artistId).onSuccess { page ->
-                            page.sections.lastOrNull()?.items?.let { items += it }
-                        }
-                    }
-                    SimilarRecommendation(
-                        title = album,
-                        items = items
-                            .distinctBy { it.id }
-                            .filterExplicit(hideExplicit)
-                            .filterVideoSongs(hideVideoSongs)
-                            .shuffled().take(10)
-                            .ifEmpty { return@mapNotNull null }
-                    )
-                }
-
-            similarRecommendations.value = (artistRecommendations + songRecommendations + albumRecommendations).shuffled()
-            allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
-                    homePage.value?.sections?.flatMap { it.items }.orEmpty()
-        }
     }
 
     private val _isLoadingMore = MutableStateFlow(false)
@@ -775,23 +709,10 @@ class HomeViewModel @Inject constructor(
         if (isRefreshing.value) return
         isRefreshing.value = true
         viewModelScope.launch(Dispatchers.IO) {
-            // If a chip is selected, reload the chip's content instead of the default home
-            val currentChip = selectedChip.value
-            if (currentChip != null) {
-                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                val nextSections = YouTube.home(params = currentChip.endpoint?.params).getOrNull()
-                if (nextSections != null) {
-                    homePage.value = nextSections.copy(
-                        chips = homePage.value?.chips,
-                        sections = nextSections.sections.mapNotNull { section ->
-                            section.copy(items = section.items.filterOutNulls().filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts))
-                        }
-                    )
-                }
-            } else {
-                load()
+            loadLatestSongs()
+            if (YouTube.cookie != null) {
+                loadAccountInfo()
+                loadAccountPlaylists()
             }
             isRefreshing.value = false
         }
@@ -826,16 +747,11 @@ class HomeViewModel @Inject constructor(
 
         // Prepare wrapped data in background
         viewModelScope.launch(Dispatchers.IO) {
-            // PureMusic: reload home data when artist filter settings change
+            // PureMusic: reload latest songs when artist filter settings change
             var firstEmission = true
             (approvedArtistIdsFlow as kotlinx.coroutines.flow.Flow<*>).collect {
                 if (firstEmission) { firstEmission = false; return@collect }
-                if (isHomeDataLoaded) {
-                    quickPicks.value = null
-                    forgottenFavorites.value = null
-                    keepListening.value = null
-                    refresh()
-                }
+                loadLatestSongs()
             }
         }
 

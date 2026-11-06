@@ -89,6 +89,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AutoRadioQueueKey
 import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.PureMusicArtistFilterEnabledKey
 import com.metrolist.music.constants.MiniPlayerBottomSpacing
 import com.metrolist.music.constants.MiniPlayerHeight
 import com.metrolist.music.constants.NavigationBarHeight
@@ -161,6 +162,7 @@ fun OnlineSearchResult(
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val autoRadioQueue by rememberPreference(AutoRadioQueueKey, defaultValue = true)
+    val isFilterEnabled by rememberPreference(PureMusicArtistFilterEnabledKey, defaultValue = false)
 
     BackHandler(enabled = isSearchFocused) {
         isSearchFocused = false
@@ -207,6 +209,13 @@ fun OnlineSearchResult(
     // Clear video filter if hideVideoSongs setting is enabled and filter is set to FILTER_VIDEO
     LaunchedEffect(hideVideoSongs) {
         if (hideVideoSongs && viewModel.filter.value == FILTER_VIDEO) {
+            viewModel.filter.value = null
+        }
+    }
+
+    // Reset filter if not allowed when artist filtering is enabled
+    LaunchedEffect(isFilterEnabled) {
+        if (isFilterEnabled && viewModel.filter.value != null && viewModel.filter.value != FILTER_SONG && viewModel.filter.value != FILTER_ALBUM) {
             viewModel.filter.value = null
         }
     }
@@ -454,25 +463,33 @@ fun OnlineSearchResult(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 val visibleChips =
-                    listOf(
-                        null to stringResource(R.string.filter_all),
-                        FILTER_SONG to stringResource(R.string.filter_songs),
-                    ).let { baseChips ->
-                        if (!hideVideoSongs) {
-                            baseChips + (FILTER_VIDEO to stringResource(R.string.filter_videos))
-                        } else {
-                            baseChips
-                        }
-                    } +
+                    if (isFilterEnabled) {
                         listOf(
+                            null to stringResource(R.string.filter_all),
+                            FILTER_SONG to stringResource(R.string.filter_songs),
                             FILTER_ALBUM to stringResource(R.string.filter_albums),
-                            FILTER_ARTIST to stringResource(R.string.filter_artists),
-                            FILTER_COMMUNITY_PLAYLIST to stringResource(R.string.filter_community_playlists),
-                            FILTER_FEATURED_PLAYLIST to stringResource(R.string.filter_featured_playlists),
-                            FILTER_PODCAST to stringResource(R.string.filter_podcasts),
-                            FILTER_EPISODE to stringResource(R.string.filter_episodes),
-                            FILTER_PROFILE to stringResource(R.string.filter_profiles),
                         )
+                    } else {
+                        listOf(
+                            null to stringResource(R.string.filter_all),
+                            FILTER_SONG to stringResource(R.string.filter_songs),
+                        ).let { baseChips ->
+                            if (!hideVideoSongs) {
+                                baseChips + (FILTER_VIDEO to stringResource(R.string.filter_videos))
+                            } else {
+                                baseChips
+                            }
+                        } +
+                            listOf(
+                                FILTER_ALBUM to stringResource(R.string.filter_albums),
+                                FILTER_ARTIST to stringResource(R.string.filter_artists),
+                                FILTER_COMMUNITY_PLAYLIST to stringResource(R.string.filter_community_playlists),
+                                FILTER_FEATURED_PLAYLIST to stringResource(R.string.filter_featured_playlists),
+                                FILTER_PODCAST to stringResource(R.string.filter_podcasts),
+                                FILTER_EPISODE to stringResource(R.string.filter_episodes),
+                                FILTER_PROFILE to stringResource(R.string.filter_profiles),
+                            )
+                    }
 
                 ChipsRow(
                     chips = visibleChips,

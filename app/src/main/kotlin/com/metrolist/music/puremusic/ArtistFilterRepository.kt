@@ -70,6 +70,30 @@ class ArtistFilterRepository @Inject constructor(
         }
     }
 
+    /**
+     * PureMusic: In search results, when filtering is enabled, show ONLY albums and songs by approved artists.
+     */
+    suspend fun filterSearchYTItems(items: List<YTItem>): List<YTItem> {
+        val candidates = items.filter { it is SongItem || it is AlbumItem }
+        if (!isFilterCurrentlyEnabled()) return candidates
+        val approved = database.approvedArtists().first()
+        val approvedIds = approved.map { it.artistId }.toSet()
+        val approvedNames = approved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+        return candidates.filter { item ->
+            when (item) {
+                is SongItem -> item.artists.isNotEmpty() && item.artists.any {
+                    (it.id != null && it.id in approvedIds) ||
+                    (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                }
+                is AlbumItem -> item.artists.orEmpty().isNotEmpty() && item.artists.orEmpty().any {
+                    (it.id != null && it.id in approvedIds) ||
+                    (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                }
+                else -> false
+            }
+        }
+    }
+
     suspend fun filterSongs(songs: List<Song>): List<Song> {
         if (!isFilterCurrentlyEnabled()) return songs
         val approved = database.approvedArtists().first()

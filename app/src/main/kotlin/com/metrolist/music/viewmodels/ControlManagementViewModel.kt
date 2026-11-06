@@ -17,6 +17,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.ApprovedArtist
 import com.metrolist.music.puremusic.PasswordUtils
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.get
 import com.metrolist.music.utils.safeDataStoreEdit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,7 +39,11 @@ class ControlManagementViewModel @Inject constructor(
     // Password
     val passwordHash: StateFlow<String?> = context.dataStore.data
         .map { it[PureMusicPasswordHashKey] }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            context.dataStore[PureMusicPasswordHashKey],
+        )
 
     val isPasswordSet: Boolean get() = passwordHash.value != null
 

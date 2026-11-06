@@ -87,6 +87,7 @@ import com.metrolist.innertube.models.PodcastItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalImagesEnabled
 import com.metrolist.music.LocalArtistNameAliases
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
@@ -167,6 +168,7 @@ fun ArtistScreen(
     val showArtistDescription by rememberPreference(key = ShowArtistDescriptionKey, defaultValue = true)
     val showArtistSubscriberCount by rememberPreference(key = ShowArtistSubscriberCountKey, defaultValue = true)
     val showMonthlyListeners by rememberPreference(key = ShowMonthlyListenersKey, defaultValue = true)
+    val imagesEnabled = LocalImagesEnabled.current
 
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -229,23 +231,25 @@ fun ArtistScreen(
                                 },
                     ) {
                         // Artist Image Placeholder
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1.1f),
-                        ) {
-                            Spacer(
+                        if (imagesEnabled) {
+                            Box(
                                 modifier =
                                     Modifier
-                                        .fillMaxSize()
-                                        .shimmer()
-                                        .background(MaterialTheme.colorScheme.onSurface)
-                                        .fadingEdge(
-                                            top = systemBarsTopPadding + AppBarHeight,
-                                            bottom = 200.dp,
-                                        ),
-                            )
+                                        .fillMaxWidth()
+                                        .aspectRatio(1.1f),
+                            ) {
+                                Spacer(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .shimmer()
+                                            .background(MaterialTheme.colorScheme.onSurface)
+                                            .fadingEdge(
+                                                top = systemBarsTopPadding + AppBarHeight,
+                                                bottom = 200.dp,
+                                            ),
+                                )
+                            }
                         }
                         // Artist Name and Controls Section
                         Column(
@@ -313,7 +317,11 @@ fun ArtistScreen(
                 }
             } else {
                 item(key = "header") {
-                    val thumbnail = artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
+                    val thumbnail = if (imagesEnabled) {
+                        artistPage?.artist?.thumbnail ?: libraryArtist?.artist?.thumbnailUrl
+                    } else {
+                        null
+                    }
 
                     Box {
                         // Artist Image with offset

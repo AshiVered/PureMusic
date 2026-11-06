@@ -1005,7 +1005,8 @@ fun BottomSheetPlayer(
                                         },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (hidePlayerThumbnail) {
+                                val imagesEnabled = LocalImagesEnabled.current
+                                if (hidePlayerThumbnail || !imagesEnabled) {
                                     Box(
                                         modifier =
                                             Modifier
@@ -1020,7 +1021,7 @@ fun BottomSheetPlayer(
                                             tint = textButtonColor.copy(alpha = 0.7f),
                                         )
                                     }
-                                } else if (LocalImagesEnabled.current) {
+                                } else {
                                     AsyncImage(
                                         model = mediaMetadata.thumbnailUrl,
                                         contentDescription = null,

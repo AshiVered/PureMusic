@@ -8,6 +8,7 @@ package com.metrolist.music.ui.menu
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -55,6 +56,7 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.YouTube
+import com.metrolist.music.LocalImagesEnabled
 import com.metrolist.music.LocalNavController
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.music.LocalDatabase
@@ -210,14 +212,24 @@ fun YouTubeSongMenu(
                 modifier = Modifier
                     .size(ListThumbnailSize)
                     .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                AsyncImage(
-                    model = song.thumbnail.resize(200, 200),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(ThumbnailCornerRadius))
-                )
+                if (LocalImagesEnabled.current) {
+                    AsyncImage(
+                        model = song.thumbnail.resize(200, 200),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(ThumbnailCornerRadius))
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.music_note),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         trailingContent = {

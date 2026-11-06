@@ -14,6 +14,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.filterExplicit
@@ -110,10 +111,33 @@ constructor(
                             .filterExplicit(hideExplicit)
                             .filterVideoSongs(hideVideoSongs)
                             .filterYoutubeShorts(hideYoutubeShorts)
-                    val pureMusicSummaries = filteredPage.summaries.mapNotNull { summary ->
-                        val filteredItems = artistFilterRepository.filterYTItems(summary.items)
-                        if (filteredItems.isEmpty()) null
-                        else summary.copy(items = filteredItems)
+                    val isFilterEnabled = artistFilterRepository.isFilterCurrentlyEnabled()
+                    val pureMusicSummaries = if (isFilterEnabled) {
+                        val allFilteredItems = artistFilterRepository.filterSearchYTItems(
+                            filteredPage.summaries.flatMap { it.items }
+                        )
+                        val filteredSongs = allFilteredItems.filterIsInstance<SongItem>()
+                        val filteredAlbums = allFilteredItems.filterIsInstance<AlbumItem>()
+                        val summaries = mutableListOf<com.metrolist.innertube.pages.SearchSummary>()
+                        if (filteredSongs.isNotEmpty()) {
+                            summaries.add(
+                                com.metrolist.innertube.pages.SearchSummary(
+                                    title = "Songs",
+                                    items = filteredSongs,
+                                )
+                            )
+                        }
+                        if (filteredAlbums.isNotEmpty()) {
+                            summaries.add(
+                                com.metrolist.innertube.pages.SearchSummary(
+                                    title = "Albums",
+                                    items = filteredAlbums,
+                                )
+                            )
+                        }
+                        summaries
+                    } else {
+                        filteredPage.summaries
                     }
                     summaryPage = filteredPage.copy(summaries = pureMusicSummaries)
                 }.onFailure {
@@ -146,27 +170,32 @@ constructor(
                     }
                 } else {
                     if (viewStateMap[filter.value] == null) {
-                        YouTube
-                            .search(query, filter, recordSearchHistory = !context.dataStore.get(PauseSearchHistoryKey, false))
-                            .onSuccess { result ->
-                                val resolvedItems = resolveSearchMetadata(result.items)
-                                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-                                viewStateMap[filter.value] =
-                                    ItemsPage(
-                                        artistFilterRepository.filterYTItems(
-                                            resolvedItems
-                                                .distinctBy { it.id }
-                                                .filterExplicit(hideExplicit)
-                                                .filterVideoSongs(hideVideoSongs)
-                                                .filterYoutubeShorts(hideYoutubeShorts)
-                                        ),
-                                        result.continuation,
-                                    )
-                            }.onFailure {
-                                reportException(it)
-                            }
+                        val isFilterEnabled = artistFilterRepository.isFilterCurrentlyEnabled()
+                        if (isFilterEnabled && filter != YouTube.SearchFilter.FILTER_SONG && filter != YouTube.SearchFilter.FILTER_ALBUM) {
+                            viewStateMap[filter.value] = ItemsPage(emptyList(), null)
+                        } else {
+                            YouTube
+                                .search(query, filter, recordSearchHistory = !context.dataStore.get(PauseSearchHistoryKey, false))
+                                .onSuccess { result ->
+                                    val resolvedItems = resolveSearchMetadata(result.items)
+                                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                                    val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+                                    val processedItems = resolvedItems
+                                        .distinctBy { it.id }
+                                        .filterExplicit(hideExplicit)
+                                        .filterVideoSongs(hideVideoSongs)
+                                        .filterYoutubeShorts(hideYoutubeShorts)
+                                    val finalItems = if (isFilterEnabled) {
+                                        artistFilterRepository.filterSearchYTItems(processedItems)
+                                    } else {
+                                        artistFilterRepository.filterYTItems(processedItems)
+                                    }
+                                    viewStateMap[filter.value] = ItemsPage(finalItems, result.continuation)
+                                }.onFailure {
+                                    reportException(it)
+                                }
+                        }
                     }
                 }
             }
@@ -188,12 +217,16 @@ constructor(
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
-            val newItems = artistFilterRepository.filterYTItems(
-                resolvedItems
-                    .filterExplicit(hideExplicit)
-                    .filterVideoSongs(hideVideoSongs)
-                    .filterYoutubeShorts(hideYoutubeShorts)
-            )
+            val processedItems = resolvedItems
+                .filterExplicit(hideExplicit)
+                .filterVideoSongs(hideVideoSongs)
+                .filterYoutubeShorts(hideYoutubeShorts)
+            val isFilterEnabled = artistFilterRepository.isFilterCurrentlyEnabled()
+            val newItems = if (isFilterEnabled) {
+                artistFilterRepository.filterSearchYTItems(processedItems)
+            } else {
+                artistFilterRepository.filterYTItems(processedItems)
+            }
             viewStateMap[filterValue] = ItemsPage(
                 (viewState.items + newItems).distinctBy { it.id },
                 searchResult.continuation

@@ -62,13 +62,12 @@ fun ControlManagementScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
 
     var screenState by rememberSaveable {
-        mutableStateOf(ControlScreenState.LOCKED)
+        mutableStateOf(if (viewModel.isPasswordSet) ControlScreenState.LOCKED else ControlScreenState.SETUP)
     }
 
-    // Once passwordHash is loaded from DataStore, decide initial state
     LaunchedEffect(passwordHash) {
-        if (screenState == ControlScreenState.LOCKED && passwordHash == null) {
-            screenState = ControlScreenState.SETUP
+        if (screenState != ControlScreenState.UNLOCKED) {
+            screenState = if (passwordHash == null) ControlScreenState.SETUP else ControlScreenState.LOCKED
         }
     }
 

@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.music.LocalImagesEnabled
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.ApprovedArtist
 import com.metrolist.music.ui.component.IconButton
@@ -178,10 +179,12 @@ private fun ArtistSearchResultItem(
     isApproved: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
+    val imagesEnabled = LocalImagesEnabled.current
+
     ListItem(
         headlineContent = { Text(artist.title) },
         leadingContent = {
-            if (artist.thumbnail != null) {
+            if (imagesEnabled && artist.thumbnail != null) {
                 AsyncImage(
                     model = artist.thumbnail,
                     contentDescription = null,
@@ -214,10 +217,12 @@ private fun ApprovedArtistListItem(
     artist: ApprovedArtist,
     onRemove: () -> Unit,
 ) {
+    val imagesEnabled = LocalImagesEnabled.current
+
     ListItem(
         headlineContent = { Text(artist.name) },
         leadingContent = {
-            if (artist.thumbnailUrl != null) {
+            if (imagesEnabled && artist.thumbnailUrl != null) {
                 AsyncImage(
                     model = artist.thumbnailUrl,
                     contentDescription = null,

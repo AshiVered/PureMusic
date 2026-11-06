@@ -562,7 +562,8 @@ private fun ThumbnailItem(
                 .size(dimensions.thumbnailSize)
                 .clip(RoundedCornerShape(dimensions.cornerRadius))
         ) {
-            if (hidePlayerThumbnail) {
+            val imagesEnabled = LocalImagesEnabled.current
+            if (hidePlayerThumbnail || !imagesEnabled) {
                 HiddenThumbnailPlaceholder(textBackgroundColor = textBackgroundColor)
             } else {
                 val artworkUriToUse = if (item.mediaId == currentMediaId && !currentMediaThumbnail.isNullOrBlank()) {

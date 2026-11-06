@@ -28,6 +28,7 @@ import timber.log.Timber
 class CoilBitmapLoader(
     private val context: Context,
     private val scope: CoroutineScope,
+    private val isImagesEnabled: () -> Boolean = { true },
 ) : BitmapLoader {
     override fun supportsMimeType(mimeType: String): Boolean = mimeType.startsWith("image/")
 
@@ -48,6 +49,9 @@ class CoilBitmapLoader(
 
     override fun decodeBitmap(data: ByteArray): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
+            if (!isImagesEnabled()) {
+                throw IllegalStateException("Images blocked by user setting")
+            }
             try {
                 val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
                 bitmap?.createIndependentCopy() ?: createFallbackBitmap()
@@ -59,6 +63,9 @@ class CoilBitmapLoader(
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
+            if (!isImagesEnabled()) {
+                throw IllegalStateException("Images blocked by user setting")
+            }
             try {
                 val request =
                     ImageRequest
@@ -89,6 +96,7 @@ class CoilBitmapLoader(
         }
 
     override fun loadBitmapFromMetadata(metadata: MediaMetadata): ListenableFuture<Bitmap>? {
+        if (!isImagesEnabled()) return null
         metadata.artworkData?.let { return decodeBitmap(it) }
         val artworkUri = metadata.artworkUri ?: metadata.extras?.getString("artwork_uri")?.toUri() ?: return null
         return loadBitmap(artworkUri)

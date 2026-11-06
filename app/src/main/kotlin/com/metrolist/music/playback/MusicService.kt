@@ -151,6 +151,7 @@ import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseOnMute
 import com.metrolist.music.constants.PersistentQueueKey
 import com.metrolist.music.constants.PureMusicArtistFilterEnabledKey
+import com.metrolist.music.constants.PureMusicImagesEnabledKey
 import com.metrolist.music.constants.PersistentShuffleAcrossQueuesKey
 import com.metrolist.music.constants.PlayerVolumeKey
 import com.metrolist.music.constants.PreventDuplicateTracksInQueueKey
@@ -542,6 +543,33 @@ class MusicService :
         return false
     }
 
+    // PureMusic — picture blocking cache
+    @Volatile
+    private var cachedPureMusicImagesEnabled = true
+
+    private fun sanitizeMediaItem(mediaItem: MediaItem): MediaItem {
+        if (cachedPureMusicImagesEnabled) return mediaItem
+        val cleanExtras = mediaItem.mediaMetadata.extras?.let { bundle ->
+            Bundle(bundle).apply {
+                remove("artwork_uri")
+            }
+        } ?: Bundle()
+        return mediaItem.buildUpon()
+            .setMediaMetadata(
+                mediaItem.mediaMetadata.buildUpon()
+                    .setArtworkUri(null)
+                    .setArtworkData(null, null)
+                    .setExtras(cleanExtras)
+                    .build()
+            )
+            .build()
+    }
+
+    private fun sanitizeMediaItems(items: List<MediaItem>): List<MediaItem> {
+        if (cachedPureMusicImagesEnabled) return items
+        return items.map { sanitizeMediaItem(it) }
+    }
+
     // URL cache for stream URLs - class-level so it can be invalidated on errors
     private val songUrlCache = StreamUrlCache()
 
@@ -658,6 +686,7 @@ class MusicService :
         startupPrefs = runBlocking(Dispatchers.IO) { dataStore.data.first() }
         // PureMusic: initialise filter cache synchronously so the very first song is checked
         cachedPureMusicFilterEnabled = startupPrefs!![PureMusicArtistFilterEnabledKey] ?: false
+        cachedPureMusicImagesEnabled = startupPrefs!![PureMusicImagesEnabledKey] ?: true
         val initialApproved = runBlocking(Dispatchers.IO) { database.approvedArtists().first() }
         cachedApprovedArtistIds = initialApproved.map { it.artistId }.toSet()
         cachedApprovedArtistNames = initialApproved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
@@ -690,6 +719,10 @@ class MusicService :
                     val trackingCallback =
                         MediaNotification.Provider.Callback { notification ->
                             if (taskCleared) return@Callback
+                            if (!cachedPureMusicImagesEnabled) {
+                                notification.notification.extras.remove(Notification.EXTRA_LARGE_ICON)
+                                notification.notification.extras.remove(Notification.EXTRA_LARGE_ICON_BIG)
+                            }
                             latestMediaNotification = notification.notification
                             onNotificationChangedCallback.onNotificationChanged(notification)
                         }
@@ -701,6 +734,10 @@ class MusicService :
                             actionFactory,
                             trackingCallback,
                         ).also { mediaNotification ->
+                            if (!cachedPureMusicImagesEnabled) {
+                                mediaNotification.notification.extras.remove(Notification.EXTRA_LARGE_ICON)
+                                mediaNotification.notification.extras.remove(Notification.EXTRA_LARGE_ICON_BIG)
+                            }
                             latestMediaNotification = mediaNotification.notification
                         }
                 }
@@ -746,7 +783,7 @@ class MusicService :
                         Intent(this, MainActivity::class.java),
                         PendingIntent.FLAG_IMMUTABLE,
                     ),
-                ).setBitmapLoader(CoilBitmapLoader(this, scope))
+                ).setBitmapLoader(CoilBitmapLoader(this, scope) { cachedPureMusicImagesEnabled })
                 .build()
         player.repeatMode = startupPrefs!![RepeatModeKey] ?: REPEAT_MODE_OFF
 
@@ -1233,6 +1270,32 @@ class MusicService :
                 cachedApprovedArtistIds = artists.map { it.artistId }.toSet()
                 cachedApprovedArtistNames = artists.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
             }
+        }
+        // PureMusic: observe picture blocking changes
+        scope.launch {
+            dataStore.data
+                .map { it[PureMusicImagesEnabledKey] ?: true }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    cachedPureMusicImagesEnabled = enabled
+                    withContext(Dispatchers.Main) {
+                        val currentIdx = player.currentMediaItemIndex
+                        val currentItem = player.currentMediaItem
+                        if (currentItem != null && currentIdx >= 0) {
+                            val appMeta = currentItem.metadata ?: (currentItem.localConfiguration?.tag as? com.metrolist.music.models.MediaMetadata)
+                            val targetUri = if (enabled) appMeta?.thumbnailUrl?.let { android.net.Uri.parse(it) } else null
+                            val updatedItem = currentItem.buildUpon()
+                                .setMediaMetadata(
+                                    currentItem.mediaMetadata.buildUpon()
+                                        .setArtworkUri(targetUri)
+                                        .setArtworkData(null, null)
+                                        .build()
+                                )
+                                .build()
+                            player.replaceMediaItem(currentIdx, updatedItem)
+                        }
+                    }
+                }
         }
         if (startupPrefs!![PersistentQueueKey] ?: true) {
             val queueFile = filesDir.resolve(PERSISTENT_QUEUE_FILE)
@@ -1867,7 +1930,7 @@ class MusicService :
                 player.clearMediaItems()
                 return
             }
-            player.setMediaItem(queue.preloadItem!!.toMediaItem())
+            player.setMediaItem(sanitizeMediaItem(queue.preloadItem!!.toMediaItem()))
             player.prepare()
             player.playWhenReady = playWhenReady
         }
@@ -1907,12 +1970,12 @@ class MusicService :
                 val beforeItems = initialStatus.items.subList(0, safeIndex).filter { !cachedPureMusicFilterEnabled || isMediaItemApproved(it) }
                 val afterIndex = (safeIndex + 1).coerceAtMost(initialStatus.items.size)
                 val afterItems = initialStatus.items.subList(afterIndex, initialStatus.items.size).filter { !cachedPureMusicFilterEnabled || isMediaItemApproved(it) }
-                player.addMediaItems(0, beforeItems)
-                player.addMediaItems(afterItems)
+                player.addMediaItems(0, sanitizeMediaItems(beforeItems))
+                player.addMediaItems(sanitizeMediaItems(afterItems))
             } else {
                 val playIndex = initialStatus.mediaItemIndex.coerceIn(0, filteredItems.size - 1)
                 player.setMediaItems(
-                    filteredItems,
+                    sanitizeMediaItems(filteredItems),
                     playIndex,
                     initialStatus.position,
                 )
@@ -1979,7 +2042,7 @@ class MusicService :
                         player.removeMediaItems(currentIndex + 1, itemCount)
                     }
 
-                    player.addMediaItems(currentIndex + 1, radioItems)
+                    player.addMediaItems(currentIndex + 1, sanitizeMediaItems(radioItems))
                     if (player.shuffleModeEnabled) {
                         val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
                         applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
@@ -2012,7 +2075,7 @@ class MusicService :
                                 if (itemCount > currentIndex + 1) {
                                     player.removeMediaItems(currentIndex + 1, itemCount)
                                 }
-                                player.addMediaItems(currentIndex + 1, radioItems)
+                                player.addMediaItems(currentIndex + 1, sanitizeMediaItems(radioItems))
                                 if (player.shuffleModeEnabled) {
                                     applyShuffleOrder(
                                         player.currentMediaItemIndex,
@@ -2127,7 +2190,7 @@ class MusicService :
         val items = filtered
         // If queue is empty or player is idle, play immediately instead
         if (player.mediaItemCount == 0 || player.playbackState == STATE_IDLE) {
-            player.setMediaItems(items)
+            player.setMediaItems(sanitizeMediaItems(items))
             player.prepare()
             if (castConnectionHandler?.isCasting?.value != true) {
                 player.play()
@@ -2156,7 +2219,7 @@ class MusicService :
         val shuffleEnabled = player.shuffleModeEnabled
 
         // Insert items immediately after the current item in the window/index space
-        player.addMediaItems(insertIndex, items)
+        player.addMediaItems(insertIndex, sanitizeMediaItems(items))
         player.prepare()
 
         if (shuffleEnabled) {
@@ -2238,7 +2301,7 @@ class MusicService :
             }
         }
 
-        player.addMediaItems(items)
+        player.addMediaItems(sanitizeMediaItems(items))
         if (player.shuffleModeEnabled) {
             val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
@@ -2605,6 +2668,13 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        // PureMusic: sanitize media item if picture blocking is enabled
+        if (!cachedPureMusicImagesEnabled && mediaItem != null && (mediaItem.mediaMetadata.artworkUri != null || mediaItem.mediaMetadata.extras?.getString("artwork_uri") != null)) {
+            val currentIdx = player.currentMediaItemIndex
+            if (currentIdx >= 0) {
+                player.replaceMediaItem(currentIdx, sanitizeMediaItem(mediaItem))
+            }
+        }
         // PureMusic: enforce artist filter — STRICT, no exceptions
         if (cachedPureMusicFilterEnabled && mediaItem != null) {
             if (!isMediaItemApproved(mediaItem)) {
@@ -2715,7 +2785,7 @@ class MusicService :
                             }
                     }
                 if (player.playbackState != STATE_IDLE && mediaItems.isNotEmpty()) {
-                    player.addMediaItems(mediaItems)
+                    player.addMediaItems(sanitizeMediaItems(mediaItems))
                     if (player.shuffleModeEnabled) {
                         applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, cachedShufflePlaylistFirst)
                     }
@@ -4821,7 +4891,7 @@ class MusicService :
                     widgetManager.updateWidgets(
                         title = songTitle,
                         artist = artistName,
-                        artworkUri = song?.thumbnailUrl,
+                        artworkUri = if (cachedPureMusicImagesEnabled) song?.thumbnailUrl else null,
                         isPlaying = playing,
                         isLiked = resolvedIsLiked,
                         duration = if (player.duration != C.TIME_UNSET) player.duration else 0,
