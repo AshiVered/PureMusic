@@ -17,6 +17,7 @@ In settings, after setting up a password, you can:
 - [ ] **2.** Add option to allow specific songs/albums from blocked artists.
 - [ ] **3.** Block pictues by default. in control&managment, user can enable photos.
 - [ ] **4.** Add option to backup&restore control&managment settings. (inculding whitelist)
+
 ### Application Identity & Cleanup
 
 - [ ] **4.** Clean up the project directory and retain only the FOSS version.
