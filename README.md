@@ -24,15 +24,15 @@ In settings, after setting up a password, you can:
 
 ### Content Restrictions
 
-- [ ] **8.** Move the Explicit Content toggle from the Content section to Control & Management.
-- [ ] **9.** Move the video toggles from the Content section to Control & Managementk:
+- [X] **8.** Move the Explicit Content toggle from the Content section to Control & Management.
+- [X] **9.** Move the video toggles from the Content section to Control & Management.
 
 ### Application Identity & Cleanup
 
 - [ ] **10.** Clean up the project directory and retain only the FOSS version.
-- [ ] **11.** Change the application name to PureMusic.
+- [X] **11.** Change the application name to PureMusic.
 - [ ] **12.** Change the package name to `aiv.ashivered.puremusic`.
-- [ ] **13.** Change app icon - use image "logo.png" to create adaptive icons.
+- [X] **13.** Change app icon - use image "logo.png" to create adaptive icons.
 
 ### Security
 

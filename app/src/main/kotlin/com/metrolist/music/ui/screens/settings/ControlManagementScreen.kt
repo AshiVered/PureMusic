@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -47,8 +48,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.metrolist.music.R
+import com.metrolist.music.constants.HideExplicitKey
+import com.metrolist.music.constants.HideVideoSongsKey
+import com.metrolist.music.constants.HideYoutubeShortsKey
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.ControlManagementViewModel
 import kotlinx.coroutines.launch
 
@@ -236,6 +241,9 @@ private fun ManagementDashboard(
     val imagesEnabled by viewModel.imagesEnabled.collectAsStateWithLifecycle()
     val artistFilterEnabled by viewModel.artistFilterEnabled.collectAsStateWithLifecycle()
     val approvedArtists by viewModel.approvedArtists.collectAsStateWithLifecycle()
+    val (hideExplicit, onHideExplicitChange) = rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val (hideVideoSongs, onHideVideoSongsChange) = rememberPreference(key = HideVideoSongsKey, defaultValue = false)
+    val (hideYoutubeShorts, onHideYoutubeShortsChange) = rememberPreference(key = HideYoutubeShortsKey, defaultValue = false)
 
     Column(
         modifier = Modifier
@@ -312,6 +320,78 @@ private fun ManagementDashboard(
                         }
                     }
                 }
+            }
+        }
+
+        // Explicit content toggle
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(R.string.hide_explicit), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "הסתר שירים ואלבומים המסומנים כתוכן מפורש",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = hideExplicit,
+                    onCheckedChange = onHideExplicitChange,
+                )
+            }
+        }
+
+        // Hide video songs toggle
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(R.string.hide_video_songs), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "הסתר שירים שהם סרטוני וידאו",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = hideVideoSongs,
+                    onCheckedChange = onHideVideoSongsChange,
+                )
+            }
+        }
+
+        // Hide YouTube Shorts toggle
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(R.string.hide_youtube_shorts), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "הסתר סרטוני Shorts",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = hideYoutubeShorts,
+                    onCheckedChange = onHideYoutubeShortsChange,
+                )
             }
         }
     }

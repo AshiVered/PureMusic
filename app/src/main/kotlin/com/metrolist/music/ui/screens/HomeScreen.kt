@@ -1148,7 +1148,11 @@ fun HomeScreen(
                 } else {
                     item(key = "latest_songs_title") {
                         NavigationTitle(
-                            title = stringResource(R.string.new_release_albums),
+                            title = if (isFilterEnabled) {
+                                stringResource(R.string.albums)
+                            } else {
+                                stringResource(R.string.new_release_albums)
+                            },
                         )
                     }
 

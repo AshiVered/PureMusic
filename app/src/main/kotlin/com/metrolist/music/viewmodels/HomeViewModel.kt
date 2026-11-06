@@ -152,24 +152,39 @@ class HomeViewModel @Inject constructor(
                 val artistAlbums = coroutineScope {
                     approved.map { artist ->
                         async {
-                            YouTube.artist(artist.artistId).getOrNull()?.let { artistPage ->
+                            val albumsFromPage = YouTube.artist(artist.artistId).getOrNull()?.let { artistPage ->
                                 artistPage.sections
-                                    .filter {
-                                        it.title.contains("Albums", ignoreCase = true) ||
-                                        it.title.contains("Singles", ignoreCase = true)
-                                    }
                                     .flatMap { it.items }
                                     .filterIsInstance<AlbumItem>()
-                                    .take(10)
                             }.orEmpty()
+
+                            // Also search for albums by this artist so that even with few artists there are plenty of albums
+                            val albumsFromSearch = YouTube.search(artist.name, YouTube.SearchFilter.FILTER_ALBUM).getOrNull()?.let { searchResult ->
+                                searchResult.items.filterIsInstance<AlbumItem>()
+                            }.orEmpty()
+
+                            (albumsFromPage + albumsFromSearch).map { album ->
+                                if (album.artists.isNullOrEmpty()) {
+                                    album.copy(artists = listOf(Artist(name = artist.name, id = artist.artistId)))
+                                } else {
+                                    album
+                                }
+                            }
                         }
                     }.awaitAll().flatten()
                 }
 
                 val combined = (globalMatchingReleases + artistAlbums)
                     .filterIsInstance<AlbumItem>()
+                    .filter { album ->
+                        album.artists.orEmpty().isEmpty() || album.artists.orEmpty().any {
+                            (it.id != null && it.id in approvedIds) ||
+                            (it.name.isNotBlank() && it.name.trim().lowercase() in approvedNames)
+                        }
+                    }
                     .distinctBy { it.id }
                     .filterExplicit(hideExplicit)
+                    .shuffled()
                 latestSongs.value = combined
             }
         }
