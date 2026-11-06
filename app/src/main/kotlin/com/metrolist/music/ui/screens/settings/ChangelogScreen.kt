@@ -47,14 +47,33 @@ fun ChangelogScreen(
     val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(Unit) {
-        Updater.getAllReleases().onSuccess { allReleases ->
-            releases = allReleases.filter { release ->
-                Updater.compareVersions(BuildConfig.BASE_VERSION_NAME, release.tagName) >= 0
-            }
-            isLoading = false
-        }.onFailure {
-            isLoading = false
-        }
+        releases = listOf(
+            ReleaseInfo(
+                tagName = "v${BuildConfig.BASE_VERSION_NAME}",
+                versionName = BuildConfig.BASE_VERSION_NAME,
+                description = """
+                # PureMusic
+
+                ### מאפיינים וחידושים
+                - **סינון תוכן לפי אמנים מאושרים:** סינון קפדני בדף הבית, בחיפוש ובניגון, המאפשר האזנה רק לאמנים שנבחרו ברשימה הלבנה.
+                - **חסימת תמונות מלאה:** אפשרות לחסימת תמונות אמנים ועטיפות אלבומים בכל רחבי האפליקציה, כולל מסך הנעילה ודפי אמן.
+                - **תפריט שליטה וניהול מאובטח:** נעילת הגדרות הסינון וחסימת התוכן באמצעות סיסמה.
+                - **העברת הגדרות תוכן רגיש:** מתגי הגבלת תוכן מפורש וסרטונים הועברו לתפריט שליטה וניהול המוגן בסיסמה.
+                - **אלבומים אקראיים בדף הבית:** הצגת מבחר אלבומים מתחלפים מהאמנים המאושרים במסך הבית במצב מסונן.
+                - **זהות מותג חדשה:** שם אפליקציה PureMusic, מזהה חבילה ייעודי (`aiv.ashivered.puremusic`), ואייקון אדפטיבי מעודכן.
+
+                ### Features & Enhancements
+                - **Approved Artists Filter:** Content filtering across Home, Search, and Player for approved artists.
+                - **Full Image Blocking:** Hide artist photos and album art throughout the app and lock screen.
+                - **Protected Control & Management:** Password-protected panel for all content and filtering settings.
+                - **Home Screen Albums:** Shuffled album showcase for approved artists on the home screen.
+                - **PureMusic Identity:** Custom package name (`aiv.ashivered.puremusic`) and adaptive app icon.
+                """.trimIndent(),
+                releaseDate = "2026-11-06T00:00:00Z",
+                assets = emptyList()
+            )
+        )
+        isLoading = false
     }
 
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
@@ -133,11 +152,10 @@ fun ChangelogScreen(
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
-                val githubReleasesUrl = stringResource(R.string.github_releases_url)
                 ExtendedFloatingActionButton(
-                    onClick = { uriHandler.openUri(githubReleasesUrl) },
-                    icon = { Icon(painterResource(R.drawable.github), contentDescription = null, modifier = Modifier.size(24.dp)) },
-                    text = { Text(stringResource(R.string.view_on_github)) },
+                    onClick = onDismiss,
+                    icon = { Icon(painterResource(R.drawable.check), contentDescription = null, modifier = Modifier.size(24.dp)) },
+                    text = { Text(stringResource(R.string.close)) },
                     containerColor = MaterialTheme.colorScheme.onPrimary,
                     contentColor = MaterialTheme.colorScheme.primary
                 )

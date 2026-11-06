@@ -210,9 +210,7 @@ object Updater {
      */
     suspend fun getLatestKmpRelease(): Result<ReleaseInfo?> =
         withContext(Dispatchers.IO) {
-            runCatching {
-                parseKmpRelease(client.get(KMP_LATEST_RELEASE_URL).bodyAsText())
-            }
+            Result.success(null)
         }
 
     /**
@@ -231,31 +229,7 @@ object Updater {
      */
     suspend fun checkForUpdate(forceRefresh: Boolean = false): Result<Pair<ReleaseInfo?, Boolean>> =
         withContext(Dispatchers.IO) {
-            runCatching {
-                // Check if we should fetch (2 hour interval)
-                val shouldFetch = forceRefresh || 
-                    (System.currentTimeMillis() - lastCheckTime) > CHECK_INTERVAL_MILLIS
-                
-                if (!shouldFetch && cachedReleaseInfo != null) {
-                    val hasUpdate = isUpdateAvailable(
-                        BuildConfig.BASE_VERSION_NAME,
-                        cachedReleaseInfo!!.versionName
-                    )
-                    return@runCatching cachedReleaseInfo!! to hasUpdate
-                }
-                
-                val result = getLatestRelease(forceRefresh = true)
-                if (result.isSuccess) {
-                    val releaseInfo = result.getOrThrow()
-                    val hasUpdate = isUpdateAvailable(
-                        BuildConfig.BASE_VERSION_NAME,
-                        releaseInfo.versionName
-                    )
-                    releaseInfo to hasUpdate
-                } else {
-                    throw result.exceptionOrNull() ?: Exception("Unknown error")
-                }
-            }
+            Result.success(null to false)
         }
 
     /**
