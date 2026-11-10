@@ -60,8 +60,8 @@ class ControlManagementViewModel @Inject constructor(
 
     // Images
     val imagesEnabled: StateFlow<Boolean> = context.dataStore.data
-        .map { it[PureMusicImagesEnabledKey] ?: true }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .map { it[PureMusicImagesEnabledKey] ?: false }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun setImagesEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -71,8 +71,8 @@ class ControlManagementViewModel @Inject constructor(
 
     // Artist filter
     val artistFilterEnabled: StateFlow<Boolean> = context.dataStore.data
-        .map { it[PureMusicArtistFilterEnabledKey] ?: false }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .map { it[PureMusicArtistFilterEnabledKey] ?: true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     fun setArtistFilterEnabled(enabled: Boolean) {
         viewModelScope.launch {

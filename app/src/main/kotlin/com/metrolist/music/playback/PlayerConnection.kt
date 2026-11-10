@@ -346,6 +346,10 @@ class PlayerConnection(
      */
     fun togglePlayPause() {
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) return
+        if (!service.isCurrentMediaItemApproved()) {
+            service.handleUnapprovedCurrentMediaItem()
+            return
+        }
         try {
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
@@ -366,6 +370,10 @@ class PlayerConnection(
      * Start playback - handles Cast when active
      */
     fun play() {
+        if (!service.isCurrentMediaItemApproved()) {
+            service.handleUnapprovedCurrentMediaItem()
+            return
+        }
         try {
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {

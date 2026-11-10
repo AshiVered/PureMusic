@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.metrolist.music.puremusic.ArtistFilterRepository
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -36,59 +37,75 @@ class LocalSearchViewModel
 constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
+    private val artistFilterRepository: ArtistFilterRepository,
 ) : ViewModel() {
     val query = MutableStateFlow("")
     val filter = MutableStateFlow(LocalFilter.ALL)
 
     val result =
         combine(
+            combine(
+                query,
+                filter,
+                context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
+            ) { q, f, hideVideoSongs ->
+                Triple(q, f, hideVideoSongs)
+            }.flatMapLatest { (q, f, hideVideoSongs) ->
+                if (q.isEmpty()) {
+                    flowOf(emptyList())
+                } else {
+                    when (f) {
+                        LocalFilter.ALL ->
+                            combine(
+                                database.searchSongs(q, PREVIEW_SIZE),
+                                database.searchAlbums(q, PREVIEW_SIZE),
+                                database.searchArtists(q, PREVIEW_SIZE),
+                                database.searchPlaylists(q, PREVIEW_SIZE),
+                            ) { songs, albums, artists, playlists ->
+                                val filteredSongs = if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
+                                filteredSongs + albums + artists + playlists
+                            }
+
+                        LocalFilter.SONG -> database.searchSongs(q).map { songs ->
+                            if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
+                        }
+                        LocalFilter.ALBUM -> database.searchAlbums(q)
+                        LocalFilter.ARTIST -> database.searchArtists(q)
+                        LocalFilter.PLAYLIST -> database.searchPlaylists(q)
+                    }
+                }
+            },
             query,
             filter,
-            context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
-        ) { query, filter, hideVideoSongs ->
-            Triple(query, filter, hideVideoSongs)
-        }.flatMapLatest { (query, filter, hideVideoSongs) ->
-            if (query.isEmpty()) {
-                flowOf(LocalSearchResult("", filter, emptyMap()))
-            } else {
-                when (filter) {
-                    LocalFilter.ALL ->
-                        combine(
-                            database.searchSongs(query, PREVIEW_SIZE),
-                            database.searchAlbums(query, PREVIEW_SIZE),
-                            database.searchArtists(query, PREVIEW_SIZE),
-                            database.searchPlaylists(query, PREVIEW_SIZE),
-                        ) { songs, albums, artists, playlists ->
-                            val filteredSongs = if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
-                            val localSongs = filteredSongs.map { it }
-                            val localAlbums = albums.map { it }
-                            val localArtists = artists.map { it }
-                            val localPlaylists = playlists.map { it }
-                            localSongs + localAlbums + localArtists + localPlaylists
+            artistFilterRepository.approvedArtistIdsFlow,
+        ) { list, currentQuery, currentFilter, (filterEnabled, approvedIds, approvedNames) ->
+            val filteredList = if (filterEnabled) {
+                list.filter { item ->
+                    when (item) {
+                        is Song -> item.artists.isNotEmpty() && item.artists.any {
+                            it.id in approvedIds || it.name.trim().lowercase() in approvedNames
                         }
-
-                    LocalFilter.SONG -> database.searchSongs(query).map { songs ->
-                        if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
+                        is Album -> item.artists.isNotEmpty() && item.artists.any {
+                            it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+                        }
+                        is Artist -> item.id in approvedIds || item.artist.name.trim().lowercase() in approvedNames
+                        else -> true
                     }
-                    LocalFilter.ALBUM -> database.searchAlbums(query)
-                    LocalFilter.ARTIST -> database.searchArtists(query)
-                    LocalFilter.PLAYLIST -> database.searchPlaylists(query)
-                }.map { list ->
-                    LocalSearchResult(
-                        query = query,
-                        filter = filter,
-                        map =
-                        list.groupBy {
-                            when (it) {
-                                is Song -> LocalFilter.SONG
-                                is Album -> LocalFilter.ALBUM
-                                is Artist -> LocalFilter.ARTIST
-                                is Playlist -> LocalFilter.PLAYLIST
-                            }
-                        },
-                    )
                 }
-            }
+            } else list
+
+            LocalSearchResult(
+                query = currentQuery,
+                filter = currentFilter,
+                map = filteredList.groupBy {
+                    when (it) {
+                        is Song -> LocalFilter.SONG
+                        is Album -> LocalFilter.ALBUM
+                        is Artist -> LocalFilter.ARTIST
+                        is Playlist -> LocalFilter.PLAYLIST
+                    }
+                },
+            )
         }.stateIn(
             viewModelScope,
             SharingStarted.Lazily,

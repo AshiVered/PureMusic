@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import com.metrolist.music.puremusic.ArtistFilterRepository
 import javax.inject.Inject
 
 @HiltViewModel
@@ -39,11 +40,13 @@ class CachePlaylistViewModel
         @ApplicationContext private val context: Context,
         private val database: MusicDatabase,
         @PlayerCache private val playerCache: Cache,
+        private val artistFilterRepository: ArtistFilterRepository,
     ) : ViewModel() {
         private data class Inputs(
             val flagged: List<Song>,
             val hideExplicit: Boolean,
             val hideVideoSongs: Boolean,
+            val filterState: Triple<Boolean, Set<String>, Set<String>>,
         )
 
         @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,8 +55,9 @@ class CachePlaylistViewModel
                 database.cachePlaylistSongs(),
                 context.dataStore.data.map { it[HideExplicitKey] ?: false }.distinctUntilChanged(),
                 context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged(),
+                artistFilterRepository.approvedArtistIdsFlow,
                 ::Inputs,
-            ).mapLatest { (flagged, hideExplicit, hideVideoSongs) ->
+            ).mapLatest { (flagged, hideExplicit, hideVideoSongs, filterState) ->
                 val partition =
                     partitionCachedSongs(flagged, ::cachedContentLength) { songId, contentLength ->
                         playerCache.isCached(songId, 0, contentLength)
@@ -69,10 +73,21 @@ class CachePlaylistViewModel
                     }
                 }
 
-                partition.stillCached
+                val songs = partition.stillCached
                     .sortedByDescending { it.song.dateDownload }
                     .filterExplicit(hideExplicit)
                     .filterVideoSongs(hideVideoSongs)
+
+                val (filterEnabled, approvedIds, approvedNames) = filterState
+                if (filterEnabled) {
+                    songs.filter { song ->
+                        song.artists.isNotEmpty() && song.artists.any {
+                            it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+                        }
+                    }
+                } else {
+                    songs
+                }
             }.flowOn(Dispatchers.IO)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

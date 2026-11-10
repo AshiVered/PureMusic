@@ -691,7 +691,7 @@ fun HomeScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val latestSongs by viewModel.latestSongs.collectAsStateWithLifecycle()
-    val isFilterEnabled by rememberPreference(PureMusicArtistFilterEnabledKey, defaultValue = false)
+    val isFilterEnabled by rememberPreference(PureMusicArtistFilterEnabledKey, defaultValue = true)
 
     val quickPicks by viewModel.filteredQuickPicks.collectAsStateWithLifecycle()
     val forgottenFavorites by viewModel.filteredForgottenFavorites.collectAsStateWithLifecycle()

@@ -20,12 +20,14 @@ import com.metrolist.music.extensions.filterVideoSongs
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.puremusic.ArtistFilterRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -42,6 +44,7 @@ constructor(
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
     private val syncUtils: SyncUtils,
+    private val artistFilterRepository: ArtistFilterRepository,
 ) : ViewModel() {
     val playlist = savedStateHandle.get<String>("playlist")!!
 
@@ -50,32 +53,38 @@ constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val likedSongs =
-        context.dataStore.data
-            .map {
-                Triple(
-                    it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE) to (it[SongSortDescendingKey]
-                        ?: true),
-                    it[HideExplicitKey] ?: false,
-                    it[HideVideoSongsKey] ?: false
-                )
-            }
-            .distinctUntilChanged()
-            .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
-                val (sortType, descending) = sortDesc
-                when (playlist) {
-                    "liked" -> database.likedSongs(sortType, descending)
-                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-
-                    "downloaded" -> database.downloadedSongs(sortType, descending)
-                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-
-                    "uploaded" -> database.uploadedSongs(sortType, descending)
-                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-
-                    else -> kotlinx.coroutines.flow.flowOf(emptyList())
+        combine(
+            context.dataStore.data
+                .map {
+                    Triple(
+                        it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE) to (it[SongSortDescendingKey]
+                            ?: true),
+                        it[HideExplicitKey] ?: false,
+                        it[HideVideoSongsKey] ?: false
+                    )
                 }
-            }
-            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, emptyList())
+                .distinctUntilChanged()
+                .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
+                    val (sortType, descending) = sortDesc
+                    when (playlist) {
+                        "liked" -> database.likedSongs(sortType, descending)
+                            .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+
+                        "downloaded" -> database.downloadedSongs(sortType, descending)
+                            .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+
+                        "uploaded" -> database.uploadedSongs(sortType, descending)
+                            .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+
+                        else -> kotlinx.coroutines.flow.flowOf(emptyList())
+                    }
+                },
+            artistFilterRepository.approvedArtistIdsFlow,
+        ) { songs, (filterEnabled, approvedIds, approvedNames) ->
+            if (filterEnabled) songs.filter { song ->
+                song.artists.isNotEmpty() && song.artists.any { it.id in approvedIds || it.name.trim().lowercase() in approvedNames }
+            } else songs
+        }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, emptyList())
 
     fun syncLikedSongs() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }

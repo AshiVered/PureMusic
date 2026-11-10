@@ -1033,7 +1033,7 @@ class MainActivity : FragmentActivity() {
 
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
-                val imagesEnabled by rememberPreference(PureMusicImagesEnabledKey, defaultValue = true)
+                val imagesEnabled by rememberPreference(PureMusicImagesEnabledKey, defaultValue = false)
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,

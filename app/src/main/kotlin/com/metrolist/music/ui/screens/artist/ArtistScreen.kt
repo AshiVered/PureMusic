@@ -202,7 +202,7 @@ fun ArtistScreen(
     // PureMusic: block access to artists not on the approved list
     LaunchedEffect(viewModel.artistId) {
         val filterEnabled = context.dataStore.data
-            .map { it[com.metrolist.music.constants.PureMusicArtistFilterEnabledKey] ?: false }
+            .map { it[com.metrolist.music.constants.PureMusicArtistFilterEnabledKey] ?: true }
             .first()
         if (filterEnabled && !database.isArtistApproved(viewModel.artistId)) {
             android.widget.Toast.makeText(

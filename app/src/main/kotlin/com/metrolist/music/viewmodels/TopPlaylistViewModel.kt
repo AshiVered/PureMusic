@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.metrolist.music.puremusic.ArtistFilterRepository
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,6 +34,7 @@ constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
+    private val artistFilterRepository: ArtistFilterRepository,
 ) : ViewModel() {
     val top = savedStateHandle.get<String>("top")!!
 
@@ -41,18 +43,29 @@ constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val topSongs =
         combine(
-            topPeriod,
-            context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
-        ) { period, hideVideoSongs -> period to hideVideoSongs }
-            .flatMapLatest { (period, hideVideoSongs) ->
-                val now = LocalDateTime.now()
-                database.mostPlayedSongs(
-                    fromTimeStamp = period.toLocalDateTime(),
-                    limit = top.toInt(),
-                    offset = 0,
-                    toTimeStamp = now
-                ).map { songs ->
-                    if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
+            combine(
+                topPeriod,
+                context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
+            ) { period, hideVideoSongs -> period to hideVideoSongs }
+                .flatMapLatest { (period, hideVideoSongs) ->
+                    val now = LocalDateTime.now()
+                    database.mostPlayedSongs(
+                        fromTimeStamp = period.toLocalDateTime(),
+                        limit = top.toInt(),
+                        offset = 0,
+                        toTimeStamp = now
+                    ).map { songs ->
+                        if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
+                    }
+                },
+            artistFilterRepository.approvedArtistIdsFlow,
+        ) { songs, (filterEnabled, approvedIds, approvedNames) ->
+            if (filterEnabled) {
+                songs.filter { song ->
+                    song.artists.isNotEmpty() && song.artists.any {
+                        it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+                    }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            } else songs
+        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 }

@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.Collator
 import java.util.Locale
+import com.metrolist.music.puremusic.ArtistFilterRepository
 import javax.inject.Inject
 
 @HiltViewModel
@@ -44,6 +45,7 @@ constructor(
     @ApplicationContext context: Context,
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
+    private val artistFilterRepository: ArtistFilterRepository,
 ) : ViewModel() {
     val playlistId = savedStateHandle.get<String>("playlistId")!!
     val playlist =
@@ -64,11 +66,20 @@ constructor(
                         it[HideVideoSongsKey] ?: false
                     )
                 }.distinctUntilChanged(),
-        ) { songs, (sortType, sortDescending, hideVideoSongs) ->
+            artistFilterRepository.approvedArtistIdsFlow,
+        ) { songs, (sortType, sortDescending, hideVideoSongs), (filterEnabled, approvedIds, approvedNames) ->
+            val filterByArtist = if (filterEnabled) {
+                songs.filter { ps ->
+                    ps.song.artists.isNotEmpty() && ps.song.artists.any {
+                        it.id in approvedIds || it.name.trim().lowercase() in approvedNames
+                    }
+                }
+            } else songs
+
             val filteredSongs = if (hideVideoSongs) {
-                songs.filter { !it.song.song.isVideo }
+                filterByArtist.filter { !it.song.song.isVideo }
             } else {
-                songs
+                filterByArtist
             }
             when (sortType) {
                 PlaylistSongSortType.CUSTOM -> filteredSongs

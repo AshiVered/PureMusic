@@ -514,7 +514,7 @@ class MusicService :
 
     // PureMusic — artist filter cache
     @Volatile
-    private var cachedPureMusicFilterEnabled = false
+    private var cachedPureMusicFilterEnabled = true
     @Volatile
     private var cachedApprovedArtistIds: Set<String> = emptySet()
     @Volatile
@@ -533,19 +533,66 @@ class MusicService :
         }
     }
 
-    private fun isMediaItemApproved(mediaItem: MediaItem?): Boolean {
+    fun isMediaItemApproved(mediaItem: MediaItem?): Boolean {
         if (!cachedPureMusicFilterEnabled) return true
         if (mediaItem == null) return false
         val meta = mediaItem.metadata ?: (mediaItem.localConfiguration?.tag as? com.metrolist.music.models.MediaMetadata)
         if (meta != null) return isMetadataApproved(meta)
-        val artistName = mediaItem.mediaMetadata.artist?.toString()?.trim()?.lowercase()
-        if (!artistName.isNullOrBlank() && artistName in cachedApprovedArtistNames) return true
+        val artistStr = mediaItem.mediaMetadata.artist?.toString()?.trim()?.lowercase()
+        if (!artistStr.isNullOrBlank()) {
+            if (artistStr in cachedApprovedArtistNames) return true
+            val splitNames = artistStr.split(",").map { it.trim() }
+            if (splitNames.any { it in cachedApprovedArtistNames }) return true
+        }
         return false
+    }
+
+    fun isCurrentMediaItemApproved(): Boolean {
+        return isMediaItemApproved(player.currentMediaItem)
+    }
+
+    fun handleUnapprovedCurrentMediaItem() {
+        val currentItem = player.currentMediaItem
+        val appMetadata = currentItem?.metadata ?: (currentItem?.localConfiguration?.tag as? com.metrolist.music.models.MediaMetadata)
+        val title = appMetadata?.title ?: currentItem?.mediaMetadata?.title?.toString() ?: currentItem?.mediaId
+        if (!title.isNullOrBlank()) {
+            android.widget.Toast.makeText(
+                this@MusicService,
+                "“$title” נחסם על פי הגדרותיך",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+        }
+        player.stop()
+        player.clearMediaItems()
+        clearPersistedQueueFiles()
+    }
+
+    fun enforceCurrentQueueFilter() {
+        if (!cachedPureMusicFilterEnabled) return
+        val currentItem = player.currentMediaItem
+        if (currentItem != null && !isMediaItemApproved(currentItem)) {
+            handleUnapprovedCurrentMediaItem()
+            return
+        }
+
+        val count = player.mediaItemCount
+        if (count > 0) {
+            val indicesToRemove = mutableListOf<Int>()
+            for (i in 0 until count) {
+                val item = player.getMediaItemAt(i)
+                if (!isMediaItemApproved(item)) {
+                    indicesToRemove.add(i)
+                }
+            }
+            for (i in indicesToRemove.reversed()) {
+                player.removeMediaItem(i)
+            }
+        }
     }
 
     // PureMusic — picture blocking cache
     @Volatile
-    private var cachedPureMusicImagesEnabled = true
+    private var cachedPureMusicImagesEnabled = false
 
     private fun sanitizeMediaItem(mediaItem: MediaItem): MediaItem {
         if (cachedPureMusicImagesEnabled) return mediaItem
@@ -685,8 +732,8 @@ class MusicService :
         // This consolidates ~15 main-thread-blocking DataStore reads into 1.
         startupPrefs = runBlocking(Dispatchers.IO) { dataStore.data.first() }
         // PureMusic: initialise filter cache synchronously so the very first song is checked
-        cachedPureMusicFilterEnabled = startupPrefs!![PureMusicArtistFilterEnabledKey] ?: false
-        cachedPureMusicImagesEnabled = startupPrefs!![PureMusicImagesEnabledKey] ?: true
+        cachedPureMusicFilterEnabled = startupPrefs!![PureMusicArtistFilterEnabledKey] ?: true
+        cachedPureMusicImagesEnabled = startupPrefs!![PureMusicImagesEnabledKey] ?: false
         val initialApproved = runBlocking(Dispatchers.IO) { database.approvedArtists().first() }
         cachedApprovedArtistIds = initialApproved.map { it.artistId }.toSet()
         cachedApprovedArtistNames = initialApproved.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
@@ -1262,19 +1309,22 @@ class MusicService :
         // PureMusic: observe artist filter changes
         scope.launch {
             combine(
-                dataStore.data.map { it[PureMusicArtistFilterEnabledKey] ?: false },
+                dataStore.data.map { it[PureMusicArtistFilterEnabledKey] ?: true },
                 database.approvedArtists(),
                 transform = { enabled, artists -> enabled to artists },
             ).collect { (enabled, artists) ->
                 cachedPureMusicFilterEnabled = enabled
                 cachedApprovedArtistIds = artists.map { it.artistId }.toSet()
                 cachedApprovedArtistNames = artists.map { it.name.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+                withContext(Dispatchers.Main) {
+                    enforceCurrentQueueFilter()
+                }
             }
         }
         // PureMusic: observe picture blocking changes
         scope.launch {
             dataStore.data
-                .map { it[PureMusicImagesEnabledKey] ?: true }
+                .map { it[PureMusicImagesEnabledKey] ?: false }
                 .distinctUntilChanged()
                 .collect { enabled ->
                     cachedPureMusicImagesEnabled = enabled
@@ -1951,11 +2001,33 @@ class MusicService :
             } else {
                 initialStatus.items
             }
+
+            if (queue.preloadItem == null && cachedPureMusicFilterEnabled) {
+                val originalTargetIndex = initialStatus.mediaItemIndex
+                val targetItem = initialStatus.items.getOrNull(originalTargetIndex)
+                if (targetItem != null && !isMediaItemApproved(targetItem)) {
+                    val appMetadata = targetItem.metadata ?: (targetItem.localConfiguration?.tag as? com.metrolist.music.models.MediaMetadata)
+                    val title = appMetadata?.title ?: targetItem.mediaMetadata.title?.toString() ?: targetItem.mediaId
+                    if (!restoringQueue) {
+                        android.widget.Toast.makeText(
+                            this@MusicService,
+                            "“$title” נחסם על פי הגדרותיך",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        player.clearMediaItems()
+                        clearPersistedQueueFiles()
+                    }
+                    return@launch
+                }
+            }
+
             if (filteredItems.isEmpty()) {
                 if (queue.preloadItem == null && cachedPureMusicFilterEnabled) {
                     android.widget.Toast.makeText(
                         this@MusicService,
-                        "\u05d4\u05e9\u05d9\u05e8\u05d9\u05dd \u05e0\u05d7\u05e1\u05dd \u05e2\u05dc \u05e4\u05d9 \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea\u05d9\u05da",
+                        "השירים נחסמו על פי הגדרותיך",
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -1973,7 +2045,13 @@ class MusicService :
                 player.addMediaItems(0, sanitizeMediaItems(beforeItems))
                 player.addMediaItems(sanitizeMediaItems(afterItems))
             } else {
-                val playIndex = initialStatus.mediaItemIndex.coerceIn(0, filteredItems.size - 1)
+                val targetMediaId = initialStatus.items.getOrNull(initialStatus.mediaItemIndex)?.mediaId
+                val playIndex = if (targetMediaId != null) {
+                    filteredItems.indexOfFirst { it.mediaId == targetMediaId }.takeIf { it >= 0 }
+                        ?: initialStatus.mediaItemIndex.coerceIn(0, filteredItems.size - 1)
+                } else {
+                    initialStatus.mediaItemIndex.coerceIn(0, filteredItems.size - 1)
+                }
                 player.setMediaItems(
                     sanitizeMediaItems(filteredItems),
                     playIndex,
@@ -2866,6 +2944,16 @@ class MusicService :
         playWhenReady: Boolean,
         reason: Int,
     ) {
+        // PureMusic: block playback immediately if current item is unapproved
+        if (playWhenReady && cachedPureMusicFilterEnabled) {
+            val currentItem = player.currentMediaItem
+            if (currentItem != null && !isMediaItemApproved(currentItem)) {
+                player.pause()
+                handleUnapprovedCurrentMediaItem()
+                return
+            }
+        }
+
         // Safety net: if local player tries to start while casting, immediately pause it
         if (playWhenReady && castConnectionHandler?.isCasting?.value == true) {
             player.pause()

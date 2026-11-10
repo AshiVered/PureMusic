@@ -34,7 +34,7 @@ class ArtistFilterRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     val isFilterEnabled: Flow<Boolean> = context.dataStore.data
-        .map { it[PureMusicArtistFilterEnabledKey] ?: false }
+        .map { it[PureMusicArtistFilterEnabledKey] ?: true }
 
     /** Triple<filterEnabled, approvedArtistIds, approvedArtistNames> — reactive, for ViewModels */
     val approvedArtistIdsFlow: Flow<Triple<Boolean, Set<String>, Set<String>>> =

@@ -13,9 +13,9 @@ In settings, after setting up a password, you can:
 
 ### Filtering & Home Screen
 
-- [ ] **1.** By default, filtering haas enabled. if user want to open other artists, or open all artits, can enable it in the settings.
+- [x] **1.** By default, filtering need to be enabled. if user want to open other artists, or open all artits, can enable it in the settings.
 - [ ] **2.** Add option to allow specific songs/albums from blocked artists.
-- [ ] **3.** Block pictues by default. in control&managment, user can enable photos.
+- [x] **3.** Block pictues by default. in control&managment, user can enable photos.
 - [ ] **4.** Add option to backup&restore control&managment settings. (inculding whitelist)
 
 ### Application Identity & Cleanup
@@ -29,3 +29,4 @@ In settings, after setting up a password, you can:
 
 - [ ] **6.** Disable the built-in updater until we establish our own update channel.
 - [ ] **7.** Add real changelog.
+- [ ] **8.** Translate all new strings to English and move the hebrew to hebrew values
