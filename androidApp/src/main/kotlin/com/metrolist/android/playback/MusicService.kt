@@ -46,6 +46,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.metrolist.android.App
 import com.metrolist.android.MainActivity
+import com.metrolist.android.puremusic.PureMusicPlaybackGate
 import com.metrolist.android.R
 import com.metrolist.android.cast.AndroidMdnsCastDiscovery
 import com.metrolist.android.constants.MediaSessionConstants
@@ -1080,6 +1081,7 @@ class MusicService :
                 if (Settings.shared.enableDiscordIntegration) syncDiscordState()
             }
         }
+        PureMusicPlaybackGate.attach(serviceScope, this, player) // PUREMUSIC-HOOK: playback-gate
         serviceScope.launch {
             SongMetadataState.revision.collectLatest {
                 if (Settings.shared.enableDiscordIntegration) syncDiscordState()

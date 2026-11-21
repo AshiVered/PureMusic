@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.metrolist.android.LocalMiniPlayerBottomInset
+import com.metrolist.android.puremusic.PureMusicArtistGate
 import com.metrolist.android.playback.LocalPlayerConnection
 import com.metrolist.android.ui.component.SwipeGestureHandler
 import com.metrolist.android.ui.components.AnimatedCoverVideo
@@ -80,6 +81,7 @@ fun ArtistScreenHost(
     onNavigateToAboutArtist: (ArtistItem) -> Unit = {},
     onBackClick: () -> Unit = {},
 ) {
+    if (PureMusicArtistGate.blocks(artistId, onBackClick)) return // PUREMUSIC-HOOK: artist-gate
     val shareArtistText = stringResource(Res.string.share_artist)
     val sharePlaylistText = stringResource(Res.string.share_playlist)
     val shareAlbumText = stringResource(Res.string.share_album)

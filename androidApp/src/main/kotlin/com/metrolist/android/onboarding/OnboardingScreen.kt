@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.metrolist.android.extensions.findActivity
 import com.metrolist.android.locale.AppLocale
 import com.metrolist.android.locale.rememberAppLanguageChoices
+import com.metrolist.android.puremusic.PureMusicOnboarding
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.back
 import com.metrolist.shared.generated.resources.brand_discord
@@ -181,8 +182,8 @@ internal fun OnboardingScreen(
                     OnboardingPage.PLAYBACK -> MetrolistIcons.Outlined.PlayArrow
                     OnboardingPage.FINISH -> MetrolistIcons.Filled.Check
                 },
-            step = index + 1,
-            stepCount = pages.size,
+            step = PureMusicOnboarding.step(index), // PUREMUSIC-HOOK: onboarding-numbering
+            stepCount = PureMusicOnboarding.stepCount(pages.size),
             primaryLabel =
                 when (page) {
                     OnboardingPage.WELCOME -> {
@@ -347,6 +348,7 @@ internal fun OnboardingScreen(
     }
     val content = pageContent(safePageIndex)
     val previousContent = if (safePageIndex > 0) pageContent(safePageIndex - 1) else null
+    if (PureMusicOnboarding.Step(page == OnboardingPage.WELCOME, pages.size) { currentPageName = OnboardingPage.WELCOME.name }) return // PUREMUSIC-HOOK: onboarding-step
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         OnboardingContent(

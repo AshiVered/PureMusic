@@ -1,0 +1,12 @@
+// PureMusic overrides for the shared module (see the PUREMUSIC-HOOK at the end of build.gradle.kts).
+// The app name is replaced in the string catalogs at build time, so Metrolist's catalogs (maintained by
+// their Weblate) stay untouched and upstream merges never conflict. Keep in sync with androidApp/puremusic.gradle.
+tasks.named("prepareComposeResourceAliases") {
+    inputs.file("puremusic.gradle")
+    filesMatching("**/strings.xml") {
+        filter { String line ->
+            // Show PureMusic instead of Metrolist; URLs and identifiers (MetrolistGroup, metrolist.cc) stay.
+            line.replaceAll(/(?<![\/.])Metrolist(?![A-Za-z])/, "PureMusic").replace("מטרוליסט", "PureMusic")
+        }
+    }
+}

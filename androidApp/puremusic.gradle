@@ -1,0 +1,45 @@
+// PureMusic branding, applied after Metrolist's android {} block (see the PUREMUSIC-HOOK at the end of
+// build.gradle.kts). Kept in its own file so upstream version bumps never conflict with it.
+def pureMusicProps = new Properties()
+file("puremusic.properties").withInputStream { pureMusicProps.load(it) }
+def pureMusicVersion = pureMusicProps.getProperty("pureMusicVersion")
+def pureMusicPatch = pureMusicProps.getProperty("pureMusicPatch").toInteger()
+
+android {
+    def upstreamVersionCode = defaultConfig.versionCode
+    defaultConfig {
+        applicationId "aiv.ashivered.puremusic"
+        // PureMusic 0.x used version codes below 10.
+        versionCode 1_000_000 + upstreamVersionCode * 100 + pureMusicPatch
+        versionName pureMusicVersion
+        // Metrolist's updater installs Metrolist releases; PureMusic ships its own.
+        buildConfigField "Boolean", "UPDATER_ENABLED", "false"
+    }
+    // PureMusic icons and other resource overrides. Build-type resources take precedence over main,
+    // so Metrolist's files can stay untouched.
+    sourceSets.matching { it.name in buildTypes.names }.configureEach { set ->
+        set.res.srcDir("src/puremusic/res")
+    }
+    buildTypes.configureEach { type ->
+        type.manifestPlaceholders["appLabel"] = type.name == "debug" ? "PureMusic Debug" : "PureMusic"
+    }
+}
+
+// Android-native strings (notifications, widgets) are generated from the same catalogs; feed the generator
+// a branded copy.
+def brandedCatalog = tasks.register("pureMusicBrandedCatalog", Sync) {
+    from(rootProject.file("shared/src/commonMain/composeResources"))
+    include("values*/**")
+    inputs.file("puremusic.gradle")
+    filesMatching("**/strings.xml") {
+        filter { String line ->
+            // Show PureMusic instead of Metrolist; URLs and identifiers (MetrolistGroup, metrolist.cc) stay.
+            line.replaceAll(/(?<![\/.])Metrolist(?![A-Za-z])/, "PureMusic").replace("מטרוליסט", "PureMusic")
+        }
+    }
+    into(layout.buildDirectory.dir("generated/puremusic/composeResources"))
+}
+tasks.named("generateAndroidStrings") {
+    dependsOn(brandedCatalog)
+    catalogDirectory.set(layout.buildDirectory.dir("generated/puremusic/composeResources"))
+}

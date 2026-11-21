@@ -217,6 +217,13 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- PUREMUSIC-HOOK: control-activity -->
+        <activity
+            android:name="com.metrolist.android.puremusic.PureMusicControlActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Metrolist"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name="com.metrolist.android.backup.RestoreRestartActivity"
             android:excludeFromRecents="true"

@@ -508,3 +508,5 @@ tasks.matching { it.name.endsWith("UnitTestJavaRes") }.configureEach {
 tasks.withType<Test>().configureEach {
     jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
 }
+
+apply(from = "puremusic.gradle") // PUREMUSIC-HOOK: branding

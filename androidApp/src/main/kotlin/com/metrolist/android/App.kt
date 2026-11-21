@@ -41,6 +41,7 @@ import com.metrolist.android.ui.GlobalPlaybackNetworkMonitor
 import com.metrolist.android.update.AppUpdateManager
 import com.metrolist.android.utils.CrashHandler
 import com.metrolist.android.utils.IconUtils
+import com.metrolist.android.puremusic.PureMusic
 import com.metrolist.android.utils.SentryManager
 import com.metrolist.android.utils.createAppImageLoader
 import com.metrolist.android.utils.isAndroidTv
@@ -241,6 +242,7 @@ class App :
         migrateCleartextIntegrations()
         migrateLegacyEqualizerProfiles()
         EqualizerProfiles.ensureDefaultProfile()
+        PureMusic.install(this) // PUREMUSIC-HOOK: install
 
         if (onboardingManager.isComplete) SentryManager.initialize(this)
 

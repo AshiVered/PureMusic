@@ -19,6 +19,7 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.toBitmap
+import com.metrolist.shared.puremusic.PureMusicPolicy
 import com.metrolist.shared.ui.components.libraryCover
 import com.metrolist.shared.utils.artworkCacheCandidates
 import com.metrolist.shared.utils.canonicalArtworkUrl
@@ -52,6 +53,7 @@ internal fun mediaArtworkUri(
     url: String?,
     isCurrent: Boolean = false,
 ): Uri? {
+    if (!PureMusicPolicy.imagesAllowed) return null // PUREMUSIC-HOOK: media-artwork
     if (isCurrent) MediaArtworkProvider.currentArtwork = url?.let { canonicalArtworkUrl(it) to it }
     if (url == null) return null
     val uri = url.toUri()

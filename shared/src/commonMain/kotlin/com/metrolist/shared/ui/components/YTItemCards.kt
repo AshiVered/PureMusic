@@ -108,6 +108,8 @@ import com.metrolist.shared.model.isVideoSong
 import com.metrolist.shared.model.previewAspectRatio
 import com.metrolist.shared.model.previewThumbnailUrl
 import com.metrolist.shared.model.thumbnailAspectRatio
+import com.metrolist.shared.puremusic.PureMusicHiddenArtwork
+import com.metrolist.shared.puremusic.PureMusicPolicy
 import com.metrolist.shared.settings.ArtistNameAliases
 import com.metrolist.shared.settings.displayName
 import com.metrolist.shared.settings.displayTitle
@@ -1211,7 +1213,9 @@ fun Artwork(
                         .graphicsLayer { rotationZ = -artworkRotation },
                 contentAlignment = Alignment.Center,
             ) {
-                if (cover != null) {
+                if (!PureMusicPolicy.imagesAllowed) { // PUREMUSIC-HOOK: artwork-placeholder
+                    PureMusicHiddenArtwork(icon, iconSize, iconModifier)
+                } else if (cover != null) {
                     Image(
                         painterResource(cover),
                         contentDescription = null,

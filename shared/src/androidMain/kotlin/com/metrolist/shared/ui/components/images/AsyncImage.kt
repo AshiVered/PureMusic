@@ -21,6 +21,8 @@ import coil3.compose.rememberConstraintsSizeResolver
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Scale
+import com.metrolist.shared.puremusic.PureMusicHiddenImage
+import com.metrolist.shared.puremusic.PureMusicPolicy
 import com.metrolist.shared.ui.player.ShareMiniPlayerArtwork
 import com.metrolist.shared.utils.rememberCachedArtworkPreview
 
@@ -36,6 +38,7 @@ actual fun AsyncImage(
     previewUrl: String?,
     saturation: Float,
 ) {
+    if (!PureMusicPolicy.imagesAllowed) return PureMusicHiddenImage(if (shape != null) modifier.clip(shape) else modifier) // PUREMUSIC-HOOK: image-hidden
     val context = LocalPlatformContext.current
 
     val sizeResolver = rememberConstraintsSizeResolver()
@@ -56,7 +59,7 @@ actual fun AsyncImage(
     val painter = rememberAsyncImagePainter(model = request, contentScale = contentScale)
     val state by painter.state.collectAsState()
     ShareMiniPlayerArtwork(url, (state as? AsyncImagePainter.State.Success)?.result)
-    val errorPainter = error.takeIf { state is AsyncImagePainter.State.Error }
+    val errorPainter = error.takeIf { state is AsyncImagePainter.State.Error && PureMusicPolicy.imagesAllowed } // PUREMUSIC-HOOK: image-error
     val showImage = state is AsyncImagePainter.State.Success || errorPainter != null
 
     val saturationFilter =

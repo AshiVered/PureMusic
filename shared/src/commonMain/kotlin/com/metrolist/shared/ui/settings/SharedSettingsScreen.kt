@@ -103,6 +103,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import com.metrolist.shared.generated.resources.*
+import com.metrolist.shared.puremusic.PureMusicSettingsHome
 import com.metrolist.shared.ui.LocalIsTv
 import com.metrolist.shared.ui.components.ExpressiveSwitch
 import com.metrolist.shared.ui.components.SwipeBackLayout
@@ -546,6 +547,7 @@ private fun SettingsNavigationPane(
                 contentPadding = PaddingValues(bottom = bottomContentPadding),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                item("puremusic") { PureMusicSettingsHome.Entry(horizontalPadding = 0.dp) } // PUREMUSIC-HOOK: settings-pane
                 registry.rootGroups.filter { it.pages.isNotEmpty() }.forEach { group ->
                     item(group.title) {
                         Text(
@@ -606,6 +608,7 @@ private fun SettingsHomeList(
             )
         }
         if (query.isBlank()) {
+            item("puremusic") { PureMusicSettingsHome.Entry() } // PUREMUSIC-HOOK: settings-home
             registry.rootGroups.filter { it.pages.isNotEmpty() }.forEach { group ->
                 item(group.title) {
                     SettingsRootGroup(group, registry, customPageIcons, onPageSelected)

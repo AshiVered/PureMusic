@@ -9,6 +9,8 @@ import androidx.compose.ui.layout.ContentScale
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.logo
 import com.metrolist.shared.model.PlaylistItem
+import com.metrolist.shared.puremusic.PureMusicHiddenCover
+import com.metrolist.shared.puremusic.PureMusicPolicy
 import com.metrolist.shared.ui.components.images.AsyncImage
 import org.jetbrains.compose.resources.painterResource
 
@@ -30,6 +32,7 @@ fun PlaylistCoverImage(
     contentScale: ContentScale = ContentScale.Crop,
     previewUrl: String? = null,
 ) {
+    if (!PureMusicPolicy.imagesAllowed) return PureMusicHiddenCover(modifier) // PUREMUSIC-HOOK: playlist-cover
     val placeholder = painterResource(Res.drawable.logo)
     val coverModifier = modifier.background(MaterialTheme.colorScheme.secondaryContainer)
     if (url.isAutoPlaylistIcon()) {

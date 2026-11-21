@@ -15,6 +15,7 @@ import com.metrolist.android.BuildConfig
 import com.metrolist.android.LocalMiniPlayerBottomInset
 import com.metrolist.android.playback.LocalPlayerConnection
 import com.metrolist.android.playback.resolveIncomingPlaybackSong
+import com.metrolist.android.puremusic.PureMusicAboutScreen
 import com.metrolist.shared.discord.openDiscordUrl
 import com.metrolist.shared.generated.resources.Res
 import com.metrolist.shared.generated.resources.app_name
@@ -33,6 +34,8 @@ fun AndroidAboutScreen(
     onNavigateBack: () -> Unit,
     onDevtoolsUnlocked: () -> Unit = {},
 ) {
+    @Suppress("UNREACHABLE_CODE")
+    return PureMusicAboutScreen(onNavigateBack.takeUnless { LocalSettingsPageHasTopBar.current }, LocalMiniPlayerBottomInset.current) // PUREMUSIC-HOOK: about
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val miniPlayerInset = LocalMiniPlayerBottomInset.current

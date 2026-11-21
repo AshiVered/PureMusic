@@ -1038,3 +1038,5 @@ tasks.register("verifyDesktopJarIntegrity") {
         }
     }
 }
+
+apply(from = "puremusic.gradle") // PUREMUSIC-HOOK: shared-branding

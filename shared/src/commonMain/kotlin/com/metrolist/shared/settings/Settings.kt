@@ -204,6 +204,7 @@ import com.metrolist.shared.model.PlaylistPickerSort
 import com.metrolist.shared.model.PlaylistSongSort
 import com.metrolist.shared.model.SortDirection
 import com.metrolist.shared.playback.SleepTimerDefaults
+import com.metrolist.shared.puremusic.PureMusicSettings
 import com.metrolist.shared.youtube.playback.PlaybackNetworkState
 import com.metrolist.shared.youtube.playback.PlaybackNetworkStateStore
 import com.russhwolf.settings.get
@@ -1092,6 +1093,8 @@ class Settings(
         (settings as? FlushableSettings)?.flush()
     }
 
+    internal val pureMusicStore: KmpSettings get() = settings // PUREMUSIC-HOOK: settings-store
+
     private fun exportSettings(excludedKeys: Set<String>): PortableSettings =
         PortableSettings(
             entries =
@@ -1362,7 +1365,7 @@ class Settings(
                     DiscordPendingAuthSessionKey,
                 )
         private val nonPortableKeys =
-            secureSettingsKeys +
+            secureSettingsKeys + PureMusicSettings.keys + // PUREMUSIC-HOOK: backup-exclude
                 setOf(
                     "lastFmSessionExpired",
                     "aiSlopBlocklistCache",

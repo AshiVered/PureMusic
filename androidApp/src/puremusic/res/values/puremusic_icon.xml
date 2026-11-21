@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PureMusic launcher icon background (same as PureMusic 0.x). Overrides Metrolist's colour. -->
+<resources>
+    <color name="ic_launcher_background">#000000</color>
+</resources>

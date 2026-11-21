@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.android.LocalMiniPlayerBottomInset
+import com.metrolist.android.puremusic.PureMusicHomeScreen
+import com.metrolist.shared.puremusic.PureMusicPolicy
 import com.metrolist.android.LocalStartupPresentation
 import com.metrolist.android.playback.LocalPlayerConnection
 import com.metrolist.android.ui.component.AdaptiveModalBottomSheet
@@ -137,6 +139,7 @@ fun HomeScreen(
     scrollToTopEvents: Flow<Long> = emptyFlow(),
     viewModel: HomeViewModel = koinViewModel<HomeViewModel>(),
 ) {
+    if (PureMusicPolicy.isArtistFilterActive) return PureMusicHomeScreen(onNavigateToAlbum, onNavigateToArtist, floatingActionsBottomInset, scrollToTopEvents) // PUREMUSIC-HOOK: home
     val playerNotReadyText = stringResource(Res.string.player_not_ready)
     val noPlayableItemsText = stringResource(Res.string.no_playable_items)
     val shuffleText = stringResource(Res.string.shuffle)

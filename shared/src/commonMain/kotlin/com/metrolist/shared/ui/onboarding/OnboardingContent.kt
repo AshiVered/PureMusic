@@ -206,8 +206,7 @@ private fun OnboardingPageLayout(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                welcomeContent(Modifier.size(24.dp))
-                                Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.titleMedium)
+                                // PUREMUSIC-HOOK: onboarding-brand (Metrolist icon and name removed)
                                 Spacer(Modifier.weight(1f))
                                 IconButton(onClick = { onPausedChange(!paused) }, shapes = IconButtonDefaults.shapes()) {
                                     Icon(

@@ -12,6 +12,7 @@ import com.metrolist.shared.model.isNonMusicalVideo
 import com.metrolist.shared.model.isPodcast
 import com.metrolist.shared.model.isPodcastBrowseId
 import com.metrolist.shared.model.isVideoSong
+import com.metrolist.shared.puremusic.PureMusicPolicy
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,7 +107,8 @@ object BlockedContent {
         item: YTItem,
         snapshot: SongBlockSnapshot,
     ): Boolean =
-        when (item) {
+        PureMusicPolicy.restricts(item) || // PUREMUSIC-HOOK: item-filter
+            when (item) {
             is SongItem -> {
                 snapshot.isBlocked(item)
             }
@@ -277,6 +279,7 @@ data class SongBlockSnapshot internal constructor(
     internal fun isArtistBlocked(artist: ArtistTiny): Boolean = artist.isBlockedBy(artistIds, artistNames)
 
     fun isBlocked(song: SongItem): Boolean {
+        if (PureMusicPolicy.restricts(song)) return true // PUREMUSIC-HOOK: song-filter
         if (song.isUnavailable) return false
         return song.id in songIds ||
             song.artists.any { it.isBlockedBy(artistIds, artistNames) } ||

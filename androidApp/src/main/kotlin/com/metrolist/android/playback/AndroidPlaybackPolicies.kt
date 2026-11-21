@@ -31,6 +31,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.metrolist.android.MainActivity
+import com.metrolist.android.puremusic.PureMusicPlaybackGate
 import com.metrolist.android.R
 import com.metrolist.android.cast.AndroidMdnsCastDiscovery
 import com.metrolist.android.constants.MediaSessionConstants
@@ -718,6 +719,7 @@ internal fun filteredQueueSelection(
     isBlocked: (SongItem) -> Boolean,
 ): Pair<List<SongItem>, Int>? {
     if (songs.isEmpty()) return null
+    PureMusicPlaybackGate.onQueueFiltered(songs.getOrNull(startIndex)) // PUREMUSIC-HOOK: queue-notice
     val queue = MusicQueue().apply { setQueue(songs, startIndex.coerceIn(songs.indices)) }
     val queued = queue.items.value
     queue.removeAt(queued.indices.filterTo(mutableSetOf()) { isBlocked(queued[it]) })
