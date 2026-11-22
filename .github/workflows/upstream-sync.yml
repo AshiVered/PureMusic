@@ -73,7 +73,10 @@ jobs:
       - name: Plan
         id: plan
         run: |
-          old=$(git merge-base HEAD upstream/main)
+          # Release notes cover Metrolist changes since the last *published* release (tags of drafts do
+          # not exist yet), so skipping a draft never loses its changes from the next notes.
+          previous=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          old=$(git merge-base "${previous:-HEAD}" upstream/main)
           new=$(git rev-parse upstream/main)
           count=$(git rev-list --count HEAD..upstream/main)
           echo "old=$old" >> "$GITHUB_OUTPUT"
