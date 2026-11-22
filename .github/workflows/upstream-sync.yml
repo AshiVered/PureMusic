@@ -1,0 +1,199 @@
+# PureMusic: merge new Metrolist commits, verify the PureMusic hooks, build a signed APK and draft a release.
+#
+# Runs daily and on demand. Nothing is published automatically: the result is a *draft* release that you
+# test and publish yourself. Any problem (merge conflict, missing hook, build failure) opens an issue.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   KEYSTORE_BASE64    signing keystore, base64-encoded (the key every PureMusic release is signed with)
+#   KEYSTORE_PASSWORD  keystore password
+#   KEY_ALIAS          key alias
+#   KEY_PASSWORD       key password
+#   SYNC_TOKEN         personal access token with "repo" and "workflow" scopes. Merging Metrolist's history
+#                      brings commits that touch their workflow files, which the default token may not push.
+
+name: Metrolist sync and release
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      release_without_upstream:
+        description: Build a release even if Metrolist has no new commits (for PureMusic-only changes)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: https://github.com/MetrolistGroup/Metrolist.git
+  UPSTREAM_BRANCH: main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          missing=""
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD SYNC_TOKEN; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Git identity
+        run: |
+          git config user.name "PureMusic sync"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch Metrolist
+        run: git fetch --no-tags "$UPSTREAM_REPO" "$UPSTREAM_BRANCH:refs/remotes/upstream/main"
+
+      - name: Plan
+        id: plan
+        run: |
+          old=$(git merge-base HEAD upstream/main)
+          new=$(git rev-parse upstream/main)
+          count=$(git rev-list --count HEAD..upstream/main)
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" = "0" ] && [ "${{ inputs.release_without_upstream }}" != "true" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Metrolist has no new commits. Nothing to do."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Metrolist commits to merge: $count"
+          fi
+
+      - name: Merge Metrolist
+        if: steps.plan.outputs.skip == 'false' && steps.plan.outputs.count != '0'
+        run: bash scripts/puremusic/merge_upstream.sh upstream/main
+
+      - name: Submodules
+        if: steps.plan.outputs.skip == 'false'
+        run: git submodule update --init --recursive
+
+      - name: Verify PureMusic hooks
+        if: steps.plan.outputs.skip == 'false'
+        run: python3 scripts/puremusic/check_hooks.py
+
+      - name: Bump version
+        id: version
+        if: steps.plan.outputs.skip == 'false'
+        run: |
+          python3 - <<'EOF'
+          import os, re
+          path = "androidApp/puremusic.properties"
+          text = open(path, encoding="utf-8").read()
+          values = dict(re.findall(r"^(pureMusic\w+)=(.*)$", text, re.M))
+          patch = int(values["pureMusicPatch"]) + 1
+          build = int(values["pureMusicBuild"]) + 1
+          text = re.sub(r"^pureMusicPatch=.*$", f"pureMusicPatch={patch}", text, flags=re.M)
+          text = re.sub(r"^pureMusicBuild=.*$", f"pureMusicBuild={build}", text, flags=re.M)
+          open(path, "w", encoding="utf-8").write(text)
+          version = f"{values['pureMusicVersion']}.{patch}"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"version={version}\n")
+          EOF
+          git add androidApp/puremusic.properties
+
+      - name: Free disk space
+        if: steps.plan.outputs.skip == 'false'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/node_modules /opt/ghc /usr/local/.ghcup /usr/share/swift
+          df -h /
+
+      - uses: actions/setup-java@v4
+        if: steps.plan.outputs.skip == 'false'
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.plan.outputs.skip == 'false'
+
+      - name: Build signed APK
+        if: steps.plan.outputs.skip == 'false'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/puremusic.keystore"
+          export KEYSTORE_PATH="$RUNNER_TEMP/puremusic.keystore"
+          ./gradlew --console=plain :androidApp:assembleRelease
+          apk=androidApp/build/outputs/apk/release/androidApp-release.apk
+          test -f "$apk" || { echo "::error::Signed APK not found (signing secrets wrong?)"; ls androidApp/build/outputs/apk/release; exit 1; }
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk" | head -3 || true
+          cp "$apk" "PureMusic-${{ steps.version.outputs.version }}.apk"
+          rm -f "$RUNNER_TEMP/puremusic.keystore"
+
+      - name: Release notes
+        if: steps.plan.outputs.skip == 'false'
+        run: |
+          previous=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          python3 scripts/puremusic/changelog.py "${{ steps.plan.outputs.old }}" "${{ steps.plan.outputs.new }}" \
+            "${{ steps.version.outputs.version }}" ${previous:+--pure-from "$previous"} > release-notes.md
+          cat release-notes.md
+
+      - name: Push
+        if: steps.plan.outputs.skip == 'false'
+        run: |
+          git commit -q -m "Release PureMusic ${{ steps.version.outputs.version }}" -m "Synced with Metrolist ${{ steps.plan.outputs.new }}."
+          git push origin HEAD:main
+
+      - name: Draft release
+        if: steps.plan.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.version }}" "PureMusic-${{ steps.version.outputs.version }}.apk" \
+            --draft --prerelease --target main \
+            --title "PureMusic ${{ steps.version.outputs.version }}" \
+            --notes-file release-notes.md
+
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "The automatic Metrolist sync failed. Nothing was pushed or released."
+            echo
+            echo "Run: $run_url"
+            if [ -f conflicts.txt ]; then
+              echo
+              echo "Merge conflicts that need a manual merge (PureMusic hooks may be involved):"
+              sed 's/^/- `/; s/$/`/' conflicts.txt
+            fi
+          } > issue.md
+          existing=$(gh issue list --state open --search "Metrolist sync failed in:title" --json number -q '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file issue.md
+          else
+            gh issue create --title "Metrolist sync failed" --body-file issue.md
+          fi

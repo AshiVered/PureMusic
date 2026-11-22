@@ -4,14 +4,17 @@ def pureMusicProps = new Properties()
 file("puremusic.properties").withInputStream { pureMusicProps.load(it) }
 def pureMusicVersion = pureMusicProps.getProperty("pureMusicVersion")
 def pureMusicPatch = pureMusicProps.getProperty("pureMusicPatch").toInteger()
+def pureMusicBuild = pureMusicProps.getProperty("pureMusicBuild").toInteger()
 
 android {
     def upstreamVersionCode = defaultConfig.versionCode
     defaultConfig {
         applicationId "aiv.ashivered.puremusic"
-        // PureMusic 0.x used version codes below 10.
-        versionCode 1_000_000 + upstreamVersionCode * 100 + pureMusicPatch
-        versionName pureMusicVersion
+        // Always increasing: Metrolist's code (rarely changes) * 10000 + PureMusic's build counter.
+        // PureMusic 0.2 was 2 and 0.3 was 1015500; this formula stays above both.
+        versionCode upstreamVersionCode * 10_000 + pureMusicBuild
+        // Automated upstream syncs bump pureMusicPatch: 0.3 -> 0.3.1 -> 0.3.2 ...
+        versionName(pureMusicPatch > 0 ? "${pureMusicVersion}.${pureMusicPatch}" : pureMusicVersion)
         // Metrolist's updater installs Metrolist releases; PureMusic ships its own.
         buildConfigField "Boolean", "UPDATER_ENABLED", "false"
     }
