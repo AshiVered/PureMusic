@@ -32,7 +32,7 @@
     <string name="puremusic_feature_canvas_description">לולאות וידאו נעות מאחורי הנגן</string>
     <string name="puremusic_feature_listen_together_description">חדרי האזנה משותפים עם אנשים אחרים</string>
     <string name="puremusic_feature_cast_description">ניגון במכשירים אחרים או שליטה במכשיר זה ממכשירים אחרים</string>
-    <string name="puremusic_search_artists">חיפוש אמנים, פודקאסטים וערוצים</string>
+    <string name="puremusic_search_artists">חיפוש, או הדבקת קישור או ‎@שם ערוץ</string>
     <string name="puremusic_search_failed">החיפוש נכשל. בדוק את החיבור ונסה שוב.</string>
     <string name="puremusic_no_approved_artists">עדיין לא אושר דבר. חפש למעלה כדי להוסיף אמנים, פודקאסטים או ערוצים.</string>
     <string name="puremusic_add">הוסף</string>

@@ -9,6 +9,7 @@ import com.metrolist.shared.model.AlbumItem
 import com.metrolist.shared.model.ArtistItem
 import com.metrolist.shared.model.ArtistTiny
 import com.metrolist.shared.model.EpisodeItem
+import com.metrolist.shared.model.PlaylistItem
 import com.metrolist.shared.model.PodcastItem
 import com.metrolist.shared.model.SongItem
 import com.metrolist.shared.model.YTItem
@@ -81,6 +82,23 @@ object PureMusicPolicy {
         return !channelId.isNullOrBlank() && channelId in approved.podcastChannelIds
     }
 
+    // Podcast id -> publishing channel, learned from podcast items seen in lists, so a podcast page opened
+    // from a list can be matched to an approved channel (the page itself only knows the podcast id).
+    private val podcastChannels = mutableMapOf<String, String>()
+
+    /** Podcast pages: allowed when the podcast, or the channel that publishes it, is approved. */
+    fun isPodcastPageAllowed(podcastId: String): Boolean {
+        if (!isArtistFilterActive) return true
+        if (isPodcastApproved(podcastId)) return true
+        val channel = synchronized(lock) { podcastChannels[podcastId.podcastKey()] }
+        return channel != null && isArtistApproved(channel, null)
+    }
+
+    private fun rememberPodcastChannel(item: PodcastItem) {
+        val channel = item.channelId?.takeIf(String::isNotBlank) ?: return
+        synchronized(lock) { podcastChannels[item.id.podcastKey()] = channel }
+    }
+
     private fun List<ArtistTiny>.anyApproved(): Boolean = any { isArtistApproved(it.id, it.name) }
 
     private fun SongItem.isApprovedEpisode(): Boolean =
@@ -96,7 +114,12 @@ object PureMusicPolicy {
             is SongItem -> restricts(item)
             is AlbumItem -> !item.artists.anyApproved()
             is ArtistItem -> !isArtistApproved(item.id, item.title)
-            is PodcastItem -> !isPodcastApproved(item.id)
+            // An approved channel (or artist) also covers the podcasts and playlists it publishes.
+            is PodcastItem -> {
+                rememberPodcastChannel(item)
+                !isPodcastApproved(item.id) && !isArtistApproved(item.channelId, null)
+            }
+            is PlaylistItem -> item.authorId.isNullOrBlank() || !isArtistApproved(item.authorId, null)
             is EpisodeItem -> {
                 val author = item.author
                 !isPodcastApproved(item.podcastId, author?.id) && (author == null || !isArtistApproved(author.id, author.name))

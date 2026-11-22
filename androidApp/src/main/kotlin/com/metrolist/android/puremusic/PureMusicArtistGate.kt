@@ -33,7 +33,7 @@ object PureMusicPodcastGate {
         podcastId: String,
         onBack: () -> Unit,
     ): Boolean {
-        if (!PureMusicPolicy.isArtistFilterActive || PureMusicPolicy.isPodcastApproved(podcastId)) return false
+        if (PureMusicPolicy.isPodcastPageAllowed(podcastId)) return false
         LaunchedEffect(podcastId) {
             PureMusic.notifyContentBlocked()
             onBack()

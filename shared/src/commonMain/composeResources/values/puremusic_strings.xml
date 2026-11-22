@@ -32,7 +32,7 @@
     <string name="puremusic_feature_canvas_description">Moving video loops behind the player</string>
     <string name="puremusic_feature_listen_together_description">Shared listening rooms with other people</string>
     <string name="puremusic_feature_cast_description">Play on other devices or let other devices control this one</string>
-    <string name="puremusic_search_artists">Search artists, podcasts and channels</string>
+    <string name="puremusic_search_artists">Search, or paste a link or @handle</string>
     <string name="puremusic_search_failed">Search failed. Check the connection and try again.</string>
     <string name="puremusic_no_approved_artists">Nothing approved yet. Search above to add artists, podcasts or channels.</string>
     <string name="puremusic_add">Add</string>

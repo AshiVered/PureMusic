@@ -295,7 +295,8 @@ internal fun ApprovedArtistsManager() {
             searching = true
             failed = false
             try {
-                results = PureMusicArtistSearch.search(query)
+                // A pasted link or @handle is resolved to its channel or podcast; anything else is searched.
+                results = PureMusicArtistSearch.resolveLink(query)?.let(::listOf) ?: PureMusicArtistSearch.search(query)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
