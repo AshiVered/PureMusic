@@ -94,7 +94,8 @@ object PureMusicPolicy {
         return channel != null && isArtistApproved(channel, null)
     }
 
-    private fun rememberPodcastChannel(item: PodcastItem) {
+    /** Records which channel publishes a podcast (used by podcast pages opened from links). */
+    fun rememberPodcastChannel(item: PodcastItem) {
         val channel = item.channelId?.takeIf(String::isNotBlank) ?: return
         synchronized(lock) { podcastChannels[item.id.podcastKey()] = channel }
     }

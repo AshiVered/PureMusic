@@ -74,4 +74,6 @@ Add approved artists in Settings &gt; Control &amp; Management.</string>
     <string name="puremusic_kind_artist">Artist</string>
     <string name="puremusic_kind_podcast">Podcast</string>
     <string name="puremusic_kind_channel">Channel</string>
+    <string name="puremusic_videos_as_audio">Show hidden videos as audio only</string>
+    <string name="puremusic_videos_as_audio_description">Instead of hiding these videos, show them and play only their sound, never the picture</string>
 </resources>

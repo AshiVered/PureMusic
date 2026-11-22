@@ -37,20 +37,29 @@ object PureMusicEnforcer {
         }
     }
 
+    private val PureMusicContentRule.isVideoRule: Boolean
+        get() = this == PureMusicContentRule.HIDE_VIDEO_SONGS || this == PureMusicContentRule.HIDE_NON_MUSICAL_VIDEOS
+
+    /** Videos the parent chose to hide are shown instead, but only their sound plays. */
+    private val audioOnlyVideos: Boolean
+        get() =
+            PureMusicSettings.videosAsAudio &&
+                PureMusicContentRule.entries.any { it.isVideoRule && PureMusicSettings.isContentRuleOn(it) }
+
     fun enforceNow() {
         val s = Settings.shared
         var contentChanged = false
         PureMusicContentRule.entries.forEach { rule ->
             // First run (also PureMusic 0.x upgrades): adopt the value already in use.
             if (!PureMusicSettings.hasContentRule(rule)) PureMusicSettings.setContentRule(rule, s.ruleValue(rule))
-            val wanted = PureMusicSettings.isContentRuleOn(rule)
+            val wanted = PureMusicSettings.isContentRuleOn(rule) && !(rule.isVideoRule && audioOnlyVideos)
             if (s.ruleValue(rule) != wanted) {
                 s.setRuleValue(rule, wanted)
                 contentChanged = true
             }
         }
         if (contentChanged) BlockedContent.contentFiltersChanged()
-        if (!PureMusicPolicy.isFeatureAllowed(PureMusicFeature.VIDEO)) {
+        if (!PureMusicPolicy.isFeatureAllowed(PureMusicFeature.VIDEO) || audioOnlyVideos) {
             if (s.musicVideoPlaybackEnabled) s.musicVideoPlaybackEnabled = false
             if (s.videoViewerVisible) s.videoViewerVisible = false
         }
@@ -83,6 +92,7 @@ object PureMusicEnforcer {
                     PureMusicPolicy.isLocked,
                     PureMusicFeature.entries.map(PureMusicSettings::isFeatureAllowed),
                     PureMusicContentRule.entries.map(PureMusicSettings::isContentRuleOn),
+                    PureMusicSettings.videosAsAudio,
                     s.hideExplicit,
                     s.hideVideoSongs,
                     s.hideNonMusicalVideos,

@@ -11,7 +11,10 @@ import com.metrolist.shared.model.AlbumItem
 import com.metrolist.shared.model.ArtistItem
 import com.metrolist.shared.model.ArtistPageResult
 import com.metrolist.shared.model.ArtistTiny
+import com.metrolist.shared.model.EpisodeItem
+import com.metrolist.shared.model.PodcastItem
 import com.metrolist.shared.model.SongItem
+import com.metrolist.shared.puremusic.PureMusicPageContext
 import com.metrolist.shared.settings.BlockedContent
 import com.metrolist.shared.utils.monthlyListenersCount
 import kotlinx.serialization.json.JsonObject
@@ -298,6 +301,8 @@ internal object YouTubeArtistParser {
                                     },
                             )
                         }
+
+                        is EpisodeItem, is PodcastItem -> PureMusicPageContext.attribute(item, channelId, title) // PUREMUSIC-HOOK: channel-page
 
                         else -> {
                             item

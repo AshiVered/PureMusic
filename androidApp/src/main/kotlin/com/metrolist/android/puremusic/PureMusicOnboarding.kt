@@ -89,6 +89,7 @@ object PureMusicOnboarding {
         PureMusicSettings.imagesEnabled = true
         PureMusicFeature.entries.forEach { PureMusicSettings.setFeatureAllowed(it, true) }
         PureMusicContentRule.entries.forEach { PureMusicSettings.setContentRule(it, false) }
+        PureMusicSettings.videosAsAudio = false
         PureMusicPolicy.notifyChanged()
     }
 

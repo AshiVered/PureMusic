@@ -29,6 +29,8 @@ HOOKS = {
     "onboarding-step": "androidApp/src/main/kotlin/com/metrolist/android/onboarding/OnboardingScreen.kt",
     "no-crash-reports": "shared/src/commonMain/kotlin/com/metrolist/shared/utils/CrashReporting.kt",
     "home": "androidApp/src/main/kotlin/com/metrolist/android/ui/screens/HomeScreen.kt",
+    "channel-page": "shared/src/commonMain/kotlin/com/metrolist/shared/api/YouTubeArtistParser.kt",
+    "browse-owner": "shared/src/commonMain/kotlin/com/metrolist/shared/api/YouTubeBrowseOperations.kt",
     "podcast-gate": "androidApp/src/main/kotlin/com/metrolist/android/ui/screens/PodcastScreen.kt",
     "artist-gate": "androidApp/src/main/kotlin/com/metrolist/android/ui/screens/ArtistScreenHost.kt",
     "artwork-placeholder": "shared/src/commonMain/kotlin/com/metrolist/shared/ui/components/YTItemCards.kt",

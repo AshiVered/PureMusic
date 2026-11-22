@@ -19,6 +19,7 @@ import com.metrolist.shared.model.Chip
 import com.metrolist.shared.model.HomePageData
 import com.metrolist.shared.model.HomeSection
 import com.metrolist.shared.model.YTItem
+import com.metrolist.shared.puremusic.PureMusicPageContext
 import com.metrolist.shared.settings.BlockedContent
 import com.metrolist.shared.state.SongLikeState
 import com.metrolist.shared.youtube.logging.YtLogger
@@ -197,7 +198,7 @@ internal class YouTubeBrowseOperations(
 
                 BrowsePageData(
                     title = title ?: response.pageTitle(),
-                    sections = BlockedContent.filterSections(sections),
+                    sections = BlockedContent.filterSections(PureMusicPageContext.attributeBrowse(browseId, sections)), // PUREMUSIC-HOOK: browse-owner
                     continuation = primarySectionList?.continuationToken() ?: secondarySectionList?.continuationToken(),
                 )
             } catch (e: CancellationException) {

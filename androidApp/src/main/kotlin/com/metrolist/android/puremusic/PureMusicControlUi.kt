@@ -61,6 +61,8 @@ import com.metrolist.shared.generated.resources.puremusic_hide_video_songs_descr
 import com.metrolist.shared.generated.resources.puremusic_kind_artist
 import com.metrolist.shared.generated.resources.puremusic_kind_channel
 import com.metrolist.shared.generated.resources.puremusic_kind_podcast
+import com.metrolist.shared.generated.resources.puremusic_videos_as_audio
+import com.metrolist.shared.generated.resources.puremusic_videos_as_audio_description
 import com.metrolist.shared.generated.resources.puremusic_locked_confirm
 import com.metrolist.shared.generated.resources.puremusic_locked_description
 import com.metrolist.shared.generated.resources.puremusic_locked_title
@@ -249,6 +251,16 @@ internal fun PureMusicSettingsList(onOpenArtists: (() -> Unit)?) {
         ) { PureMusicSettings.imagesEnabled = it }
         contentRuleRows.forEach { (rule, title, description) ->
             SwitchRow(title, description, PureMusicSettings.isContentRuleOn(rule)) { PureMusicSettings.setContentRule(rule, it) }
+        }
+        val hidesVideos =
+            PureMusicSettings.isContentRuleOn(PureMusicContentRule.HIDE_VIDEO_SONGS) ||
+                PureMusicSettings.isContentRuleOn(PureMusicContentRule.HIDE_NON_MUSICAL_VIDEOS)
+        if (hidesVideos) {
+            SwitchRow(
+                Res.string.puremusic_videos_as_audio,
+                Res.string.puremusic_videos_as_audio_description,
+                PureMusicSettings.videosAsAudio,
+            ) { PureMusicSettings.videosAsAudio = it }
         }
 
         HorizontalDivider(Modifier.padding(top = 8.dp))

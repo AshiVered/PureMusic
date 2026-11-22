@@ -74,4 +74,6 @@
     <string name="puremusic_kind_artist">אמן</string>
     <string name="puremusic_kind_podcast">פודקאסט</string>
     <string name="puremusic_kind_channel">ערוץ</string>
+    <string name="puremusic_videos_as_audio">להציג את הסרטונים המוסתרים כשמע בלבד</string>
+    <string name="puremusic_videos_as_audio_description">במקום להסתיר את הסרטונים, להציג אותם ולנגן רק את הקול, בלי תמונה</string>
 </resources>

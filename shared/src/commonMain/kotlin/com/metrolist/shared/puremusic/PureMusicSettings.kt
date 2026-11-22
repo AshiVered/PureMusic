@@ -69,6 +69,7 @@ object PureMusicSettings {
     const val APPROVED_ARTISTS_KEY = "pureMusicApprovedArtistsJson"
     const val LEGACY_MIGRATION_KEY = "pureMusicLegacyMigrationVersion"
     const val LOCKED_KEY = "pureMusicLockedUntilConfigured"
+    const val VIDEOS_AS_AUDIO_KEY = "pureMusicVideosAsAudio"
 
     val keys: Set<String> =
         setOf(
@@ -78,6 +79,7 @@ object PureMusicSettings {
             APPROVED_ARTISTS_KEY,
             LEGACY_MIGRATION_KEY,
             LOCKED_KEY,
+            VIDEOS_AS_AUDIO_KEY,
         ) + PureMusicFeature.entries.map { it.key } + PureMusicContentRule.entries.map { it.key }
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -112,6 +114,7 @@ object PureMusicSettings {
     private val artistFilterEnabledPref = BooleanPref(ARTIST_FILTER_ENABLED_KEY, true)
     private val approvedArtistsPref = StringPref(APPROVED_ARTISTS_KEY, "[]")
     private val lockedPref = BooleanPref(LOCKED_KEY, false)
+    private val videosAsAudioPref = BooleanPref(VIDEOS_AS_AUDIO_KEY, false)
     private val featurePrefs = PureMusicFeature.entries.associateWith { BooleanPref(it.key, false) }
     private val contentRulePrefs = PureMusicContentRule.entries.associateWith { BooleanPref(it.key, false) }
 
@@ -153,6 +156,14 @@ object PureMusicSettings {
         feature: PureMusicFeature,
         allowed: Boolean,
     ) = featurePrefs.getValue(feature).set(allowed)
+
+    /**
+     * Instead of hiding video songs and non-musical videos, show them and play only their sound.
+     * Only meaningful while one of those hide rules is on.
+     */
+    var videosAsAudio: Boolean
+        get() = videosAsAudioPref.state.value
+        set(value) = videosAsAudioPref.set(value)
 
     fun hasContentRule(rule: PureMusicContentRule): Boolean = store.hasKey(rule.key)
 
