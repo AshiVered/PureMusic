@@ -38,6 +38,8 @@ Home projects API renderers through shared models. Preserve shelf order, header 
 
 Home shelf pages use two columns for collections and artists, full-width 16:9 cards for video shelves, and rows for songs or mixed content. They retain the shelf items while loading its continuation or browse endpoint. Android and the shared mobile host retain page loaders with their navigation entries; paging failures keep the cursor for retry. Page identity includes the feed endpoint, chip parameters and shelf identity. Shelf More endpoints take precedence over header links. Artist header links never replace shelf contents with an artist page; a filtered shelf without its own endpoint parameters or cursor shows its existing items.
 
+Quick picks reuses a source shelf's browse endpoint and continuation only when that shelf contains every displayed pick. Local recommendations that only overlap an API shelf keep their existing songs when expanded. Without an endpoint or continuation, the page ends without a network request.
+
 Signed-in, unfiltered Home fetches only missing moods and genres from Explore after its last continuation. Existing main-feed moods skip that request. The moods shelf stays at the end of the main feed, before any separately appended feeds. No other Explore shelves enter signed-in Home.
 
 Mobile API library shelves show saved music albums while podcast shelves remain separate. Filter by browse ID and shared model type, never translated titles. Desktop excludes library/local-only sections under the [agent rule](../AGENTS.md#implementation-rules). Speed Dial is allowed.
@@ -71,6 +73,8 @@ A CDN 403 for an explicitly untokenized `_nopo` profile excludes that profile wi
 After a web-token rejection, audio requests try tokenless VISIONOS first. A failed probe continues through the normal clients. Video and YouTube canvas requests keep their video requirement and skip this audio-only preference.
 
 Android and desktop playback allow InnerTubeX's progressive transport, which iOS, downloads and canvas requests do not. `IOS_PRODUCER` needs no PO token, but YouTube only returns muxed 360p itag 18 for it, so selection tries it after every other healthy client. `PlaybackResource.isMuxedProgressive` keeps those files out of the persistent song caches, so a later play resolves a full-quality stream again.
+
+YouTube Music video canvas over SABR plays from the start only. Short-clip seeks and clip preparation stay disabled for SABR because mid-video requests often stay on protection status 2 with no media and fail as `ATTESTATION_REQUIRED`. Direct video canvas can still use short clips.
 
 Token callbacks keep request-local results. A canceled Kotlin caller does not cancel a WebView promise; late results cannot overwrite another request. Check this with `node --test scripts/test_page_bound_po_token.mjs`.
 
