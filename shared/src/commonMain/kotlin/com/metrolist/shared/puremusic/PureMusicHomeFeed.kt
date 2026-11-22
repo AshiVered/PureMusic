@@ -6,7 +6,9 @@
 package com.metrolist.shared.puremusic
 
 import com.metrolist.shared.model.AlbumItem
+import com.metrolist.shared.model.PodcastItem
 import com.metrolist.shared.model.SearchFilter
+import com.metrolist.shared.model.YTItem
 import com.metrolist.shared.settings.BlockedContent
 import com.metrolist.shared.state.GlobalYouTubeRepository
 import kotlinx.coroutines.CancellationException
@@ -26,7 +28,8 @@ import kotlinx.coroutines.launch
  */
 object PureMusicHomeFeed {
     data class State(
-        val albums: List<AlbumItem> = emptyList(),
+        /** Approved podcasts first, then albums by approved artists. */
+        val items: List<YTItem> = emptyList(),
         val isLoading: Boolean = false,
         val loadedFor: String? = null,
     )
@@ -57,22 +60,26 @@ object PureMusicHomeFeed {
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
-                        current.albums
+                        current.items
                     }
-                _state.value = State(albums = albums, isLoading = false, loadedFor = source)
+                _state.value = State(items = albums, isLoading = false, loadedFor = source)
             }
     }
 
-    private suspend fun load(): List<AlbumItem> =
+    private suspend fun load(): List<YTItem> =
         coroutineScope {
-            PureMusicSettings
-                .approvedArtists()
-                .map { artist -> async { fromArtistPage(artist) + fromSearch(artist) } }
-                .awaitAll()
-                .flatten()
-                .filterNot(BlockedContent::isBlocked)
-                .distinctBy { it.id }
-                .shuffled()
+            val (podcasts, artists) = PureMusicSettings.approvedArtists().partition { it.kind == ApprovedArtist.KIND_PODCAST }
+            val podcastItems =
+                podcasts.map { PodcastItem(id = it.id, title = it.name, thumbnail = it.thumbnail, channelId = it.channelId) }
+            val albums =
+                artists
+                    .map { artist -> async { fromArtistPage(artist) + fromSearch(artist) } }
+                    .awaitAll()
+                    .flatten()
+                    .filterNot(BlockedContent::isBlocked)
+                    .distinctBy { it.id }
+                    .shuffled()
+            podcastItems + albums
         }
 
     private suspend fun fromArtistPage(artist: ApprovedArtist): List<AlbumItem> =

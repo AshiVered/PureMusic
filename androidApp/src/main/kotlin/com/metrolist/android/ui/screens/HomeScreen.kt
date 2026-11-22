@@ -139,7 +139,7 @@ fun HomeScreen(
     scrollToTopEvents: Flow<Long> = emptyFlow(),
     viewModel: HomeViewModel = koinViewModel<HomeViewModel>(),
 ) {
-    if (PureMusicPolicy.isArtistFilterActive) return PureMusicHomeScreen(onNavigateToAlbum, onNavigateToArtist, floatingActionsBottomInset, scrollToTopEvents) // PUREMUSIC-HOOK: home
+    if (PureMusicPolicy.isArtistFilterActive) return PureMusicHomeScreen(onNavigateToAlbum, onNavigateToArtist, onNavigateToPodcast, floatingActionsBottomInset, scrollToTopEvents) // PUREMUSIC-HOOK: home
     val playerNotReadyText = stringResource(Res.string.player_not_ready)
     val noPlayableItemsText = stringResource(Res.string.no_playable_items)
     val shuffleText = stringResource(Res.string.shuffle)

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.metrolist.android.LocalMiniPlayerBottomInset
 import com.metrolist.android.playback.LocalPlayerConnection
+import com.metrolist.android.puremusic.PureMusicPodcastGate
 import com.metrolist.android.playback.SongDownloadManager
 import com.metrolist.android.ui.download.rememberDownloadPermissionGate
 import com.metrolist.android.ui.menu.PodcastMenu
@@ -51,6 +52,7 @@ fun PodcastScreen(
     onNavigateBack: () -> Unit,
     onChannelClick: (String) -> Unit = {},
 ) {
+    if (PureMusicPodcastGate.blocks(podcastId, onNavigateBack)) return // PUREMUSIC-HOOK: podcast-gate
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current

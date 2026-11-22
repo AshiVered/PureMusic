@@ -35,12 +35,25 @@ enum class PureMusicContentRule(
     HIDE_NON_MUSICAL_VIDEOS("pureMusicHideNonMusicalVideos"),
 }
 
+/**
+ * An approved source: a music artist, a YouTube channel or a podcast. The class keeps its PureMusic 0.x
+ * name so stored lists stay readable; [kind] defaults to an artist for entries saved before podcasts.
+ */
 @Serializable
 data class ApprovedArtist(
     val id: String,
     val name: String,
     val thumbnail: String? = null,
-)
+    val kind: String = KIND_ARTIST,
+    /** For podcasts: the channel that publishes it (episode authors carry this id). */
+    val channelId: String? = null,
+) {
+    companion object {
+        const val KIND_ARTIST = "artist"
+        const val KIND_CHANNEL = "channel"
+        const val KIND_PODCAST = "podcast"
+    }
+}
 
 /**
  * PureMusic preferences. They live in the same store as Metrolist's settings (the v13 keys are kept so

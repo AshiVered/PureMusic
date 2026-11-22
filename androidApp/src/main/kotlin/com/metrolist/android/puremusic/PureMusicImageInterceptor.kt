@@ -12,8 +12,11 @@ import com.metrolist.shared.puremusic.PureMusicPolicy
 
 /** First interceptor of the app's Coil loader: while images are hidden, no image is fetched, decoded or read from cache. */
 object PureMusicImageInterceptor : Interceptor {
+    /** PureMusic's own images that are not content: always shown. */
+    private val alwaysShown = setOf(DEVELOPER_AVATAR)
+
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
-        if (PureMusicPolicy.imagesAllowed) return chain.proceed()
+        if (PureMusicPolicy.imagesAllowed || chain.request.data in alwaysShown) return chain.proceed()
         return ErrorResult(
             image = null,
             request = chain.request,

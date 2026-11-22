@@ -25,3 +25,19 @@ object PureMusicArtistGate {
         return true
     }
 }
+
+/** Podcast pages of podcasts that are not approved are not opened at all. */
+object PureMusicPodcastGate {
+    @Composable
+    fun blocks(
+        podcastId: String,
+        onBack: () -> Unit,
+    ): Boolean {
+        if (!PureMusicPolicy.isArtistFilterActive || PureMusicPolicy.isPodcastApproved(podcastId)) return false
+        LaunchedEffect(podcastId) {
+            PureMusic.notifyContentBlocked()
+            onBack()
+        }
+        return true
+    }
+}

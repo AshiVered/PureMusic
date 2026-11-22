@@ -58,6 +58,9 @@ import com.metrolist.shared.generated.resources.puremusic_hide_non_musical
 import com.metrolist.shared.generated.resources.puremusic_hide_non_musical_description
 import com.metrolist.shared.generated.resources.puremusic_hide_video_songs
 import com.metrolist.shared.generated.resources.puremusic_hide_video_songs_description
+import com.metrolist.shared.generated.resources.puremusic_kind_artist
+import com.metrolist.shared.generated.resources.puremusic_kind_channel
+import com.metrolist.shared.generated.resources.puremusic_kind_podcast
 import com.metrolist.shared.generated.resources.puremusic_locked_confirm
 import com.metrolist.shared.generated.resources.puremusic_locked_description
 import com.metrolist.shared.generated.resources.puremusic_locked_title
@@ -75,7 +78,6 @@ import com.metrolist.shared.generated.resources.puremusic_section_content
 import com.metrolist.shared.generated.resources.puremusic_section_features
 import com.metrolist.shared.generated.resources.puremusic_show_images
 import com.metrolist.shared.generated.resources.puremusic_show_images_description
-import com.metrolist.shared.model.ArtistItem
 import com.metrolist.shared.puremusic.ApprovedArtist
 import com.metrolist.shared.puremusic.PureMusicArtistSearch
 import com.metrolist.shared.puremusic.PureMusicContentRule
@@ -265,12 +267,19 @@ internal fun PureMusicSettingsList(onOpenArtists: (() -> Unit)?) {
     }
 }
 
+private fun kindLabel(kind: String): StringResource =
+    when (kind) {
+        ApprovedArtist.KIND_PODCAST -> Res.string.puremusic_kind_podcast
+        ApprovedArtist.KIND_CHANNEL -> Res.string.puremusic_kind_channel
+        else -> Res.string.puremusic_kind_artist
+    }
+
 /** Search YouTube Music for artists and manage the approved list. Plain column, safe inside scrolling parents. */
 @Composable
 internal fun ApprovedArtistsManager() {
     val scope = rememberCoroutineScope()
     var query by rememberSaveable { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<ArtistItem>>(emptyList()) }
+    var results by remember { mutableStateOf<List<ApprovedArtist>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     val approved = PureMusicSettings.approvedArtists()
@@ -320,13 +329,14 @@ internal fun ApprovedArtistsManager() {
         }
         results.forEach { artist ->
             ListItem(
-                headlineContent = { Text(artist.title) },
+                headlineContent = { Text(artist.name) },
+                supportingContent = { Text(stringResource(kindLabel(artist.kind))) },
                 trailingContent = {
                     if (artist.id in approvedIds) {
                         Text(stringResource(Res.string.puremusic_added), color = MaterialTheme.colorScheme.primary)
                     } else {
                         TextButton(onClick = {
-                            update(approved + ApprovedArtist(artist.id, artist.title, artist.thumbnail))
+                            update(approved + artist)
                         }) { Text(stringResource(Res.string.puremusic_add)) }
                     }
                 },
@@ -343,6 +353,7 @@ internal fun ApprovedArtistsManager() {
         approved.forEach { artist ->
             ListItem(
                 headlineContent = { Text(artist.name) },
+                supportingContent = { Text(stringResource(kindLabel(artist.kind))) },
                 trailingContent = {
                     TextButton(onClick = { update(approved.filterNot { it.id == artist.id }) }) {
                         Text(stringResource(Res.string.puremusic_remove), color = MaterialTheme.colorScheme.error)

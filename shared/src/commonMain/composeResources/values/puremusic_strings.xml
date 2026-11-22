@@ -21,9 +21,9 @@
     <string name="puremusic_locked_description">Settings from the previous PureMusic version could not be migrated. Everything is blocked until you review the settings and confirm.</string>
     <string name="puremusic_locked_confirm">I reviewed the settings</string>
     <string name="puremusic_section_content">Content</string>
-    <string name="puremusic_artist_filter">Restrict to approved artists</string>
-    <string name="puremusic_artist_filter_description">Only music by artists you approved is shown or played</string>
-    <string name="puremusic_approved_artists">Approved artists</string>
+    <string name="puremusic_artist_filter">Restrict to approved content</string>
+    <string name="puremusic_artist_filter_description">Only music and podcasts you approved are shown or played</string>
+    <string name="puremusic_approved_artists">Approved artists and podcasts</string>
     <string name="puremusic_approved_artists_count">%1$s approved</string>
     <string name="puremusic_show_images">Show images</string>
     <string name="puremusic_show_images_description">Album covers, artist pictures and all other images</string>
@@ -32,9 +32,9 @@
     <string name="puremusic_feature_canvas_description">Moving video loops behind the player</string>
     <string name="puremusic_feature_listen_together_description">Shared listening rooms with other people</string>
     <string name="puremusic_feature_cast_description">Play on other devices or let other devices control this one</string>
-    <string name="puremusic_search_artists">Search artists on YouTube Music</string>
+    <string name="puremusic_search_artists">Search artists, podcasts and channels</string>
     <string name="puremusic_search_failed">Search failed. Check the connection and try again.</string>
-    <string name="puremusic_no_approved_artists">No approved artists yet. Search above to add some.</string>
+    <string name="puremusic_no_approved_artists">Nothing approved yet. Search above to add artists, podcasts or channels.</string>
     <string name="puremusic_add">Add</string>
     <string name="puremusic_remove">Remove</string>
     <string name="puremusic_added">Added</string>
@@ -62,7 +62,7 @@
     <string name="puremusic_hide_non_musical">Hide non-musical videos</string>
     <string name="puremusic_hide_non_musical_description">Keep official music videos and hide other video content, such as vlogs and trailers</string>
     <string name="puremusic_skip">Skip</string>
-    <string name="puremusic_home_title">Albums from approved artists</string>
+    <string name="puremusic_home_title">From your approved list</string>
     <string name="puremusic_home_empty">No albums to show yet.
 Add approved artists in Settings &gt; Control &amp; Management.</string>
     <string name="puremusic_refresh">Refresh</string>
@@ -71,4 +71,7 @@ Add approved artists in Settings &gt; Control &amp; Management.</string>
     <string name="puremusic_skip_message">All music, images and features will be available with no restrictions. You can turn filtering on later in Settings &gt; Control &amp; Management.</string>
     <string name="puremusic_skip_confirm">Continue without filtering</string>
     <string name="puremusic_cancel">Cancel</string>
+    <string name="puremusic_kind_artist">Artist</string>
+    <string name="puremusic_kind_podcast">Podcast</string>
+    <string name="puremusic_kind_channel">Channel</string>
 </resources>

@@ -40,6 +40,8 @@ import com.metrolist.shared.generated.resources.puremusic_home_empty
 import com.metrolist.shared.generated.resources.puremusic_home_title
 import com.metrolist.shared.generated.resources.puremusic_refresh
 import com.metrolist.shared.generated.resources.puremusic_shuffle
+import com.metrolist.shared.model.AlbumItem
+import com.metrolist.shared.model.PodcastItem
 import com.metrolist.shared.puremusic.PureMusicHomeFeed
 import com.metrolist.shared.puremusic.PureMusicSettings
 import com.metrolist.shared.ui.components.YTListItem
@@ -52,6 +54,7 @@ import org.jetbrains.compose.resources.stringResource
 fun PureMusicHomeScreen(
     onNavigateToAlbum: (String) -> Unit,
     onNavigateToArtist: (String) -> Unit,
+    onNavigateToPodcast: (String) -> Unit,
     floatingActionsBottomInset: State<Dp>,
     scrollToTopEvents: Flow<Long>,
 ) {
@@ -88,11 +91,11 @@ fun PureMusicHomeScreen(
                     }
                 }
             }
-            if (state.isLoading && state.albums.isEmpty()) {
+            if (state.isLoading && state.items.isEmpty()) {
                 item(key = "loading") {
                     Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 }
-            } else if (state.albums.isEmpty()) {
+            } else if (state.items.isEmpty()) {
                 item(key = "empty") {
                     Text(
                         stringResource(Res.string.puremusic_home_empty),
@@ -103,20 +106,20 @@ fun PureMusicHomeScreen(
                     )
                 }
             }
-            items(state.albums, key = { "album:${it.id}" }) { album ->
+            items(state.items, key = { "item:${it.id}" }) { item ->
                 YTListItem(
-                    item = album,
-                    onClick = { onNavigateToAlbum(album.id) },
+                    item = item,
+                    onClick = { if (item is PodcastItem) onNavigateToPodcast(item.id) else onNavigateToAlbum(item.id) },
                     onArtistClick = onNavigateToArtist,
                     onAlbumClick = onNavigateToAlbum,
-                    onAlbumPlay = { playerConnection?.playAlbum(album.id, album.title) },
+                    onAlbumPlay = if (item is AlbumItem) ({ playerConnection?.playAlbum(item.id, item.title) }) else null,
                 )
             }
         }
-        if (state.albums.isNotEmpty() && playerConnection != null) {
+        if (state.items.any { it is AlbumItem } && playerConnection != null) {
             ExtendedFloatingActionButton(
                 onClick = {
-                    state.albums.randomOrNull()?.let { playerConnection.playAlbum(it.id, it.title, shuffle = true) }
+                    state.items.filterIsInstance<AlbumItem>().randomOrNull()?.let { playerConnection.playAlbum(it.id, it.title, shuffle = true) }
                 },
                 icon = { Icon(MetrolistIcons.Filled.Shuffle, contentDescription = null) },
                 text = { Text(shuffleLabel) },

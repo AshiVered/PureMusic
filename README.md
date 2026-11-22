@@ -8,8 +8,8 @@ Since 0.3 PureMusic is based on Metrolist v14 (the Kotlin Multiplatform rewrite)
 
 Everything lives in **Settings > Control & Management**, protected by a management password (also offered as a step in the first-run wizard):
 
-- **Approved artists only** – search YouTube Music for artists and approve them. Only their music is shown or played: home, search, albums, artist pages, radio, queue, library, history and Android Auto. Artist pages and links of other artists are blocked.
-- **Home screen** – albums by the approved artists, with shuffle.
+- **Approved content only** – search YouTube Music for artists, podcasts and channels and approve them. Only their content is shown or played: home, search, albums, artist and podcast pages, radio, queue, library, history and Android Auto. Pages and links of anything else are blocked.
+- **Home screen** – the approved podcasts and albums by the approved artists, with shuffle.
 - **Hide images** – album covers, artist pictures and notification artwork (hidden by default).
 - **Hide explicit content, video songs and non-musical videos.**
 - **Disable** music videos, animated artwork (Canvas), Listen Together, Cast and Device Connect (all disabled by default).

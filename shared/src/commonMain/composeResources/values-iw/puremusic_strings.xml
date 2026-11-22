@@ -21,9 +21,9 @@
     <string name="puremusic_locked_description">לא ניתן היה להעביר את ההגדרות מהגרסה הקודמת של PureMusic. כל התוכן חסום עד שתבדוק את ההגדרות ותאשר.</string>
     <string name="puremusic_locked_confirm">בדקתי את ההגדרות</string>
     <string name="puremusic_section_content">תוכן</string>
-    <string name="puremusic_artist_filter">הגבלה לאמנים מאושרים</string>
-    <string name="puremusic_artist_filter_description">רק מוזיקה של אמנים שאישרת תוצג ותנוגן</string>
-    <string name="puremusic_approved_artists">אמנים מאושרים</string>
+    <string name="puremusic_artist_filter">הגבלה לתוכן מאושר</string>
+    <string name="puremusic_artist_filter_description">רק מוזיקה ופודקאסטים שאישרת יוצגו ויתנגנו</string>
+    <string name="puremusic_approved_artists">אמנים ופודקאסטים מאושרים</string>
     <string name="puremusic_approved_artists_count">%1$s מאושרים</string>
     <string name="puremusic_show_images">הצגת תמונות</string>
     <string name="puremusic_show_images_description">עטיפות אלבומים, תמונות אמנים וכל שאר התמונות</string>
@@ -32,9 +32,9 @@
     <string name="puremusic_feature_canvas_description">לולאות וידאו נעות מאחורי הנגן</string>
     <string name="puremusic_feature_listen_together_description">חדרי האזנה משותפים עם אנשים אחרים</string>
     <string name="puremusic_feature_cast_description">ניגון במכשירים אחרים או שליטה במכשיר זה ממכשירים אחרים</string>
-    <string name="puremusic_search_artists">חיפוש אמנים ב-YouTube Music</string>
+    <string name="puremusic_search_artists">חיפוש אמנים, פודקאסטים וערוצים</string>
     <string name="puremusic_search_failed">החיפוש נכשל. בדוק את החיבור ונסה שוב.</string>
-    <string name="puremusic_no_approved_artists">עדיין אין אמנים מאושרים. חפש למעלה כדי להוסיף.</string>
+    <string name="puremusic_no_approved_artists">עדיין לא אושר דבר. חפש למעלה כדי להוסיף אמנים, פודקאסטים או ערוצים.</string>
     <string name="puremusic_add">הוסף</string>
     <string name="puremusic_remove">הסר</string>
     <string name="puremusic_added">נוסף</string>
@@ -62,7 +62,7 @@
     <string name="puremusic_hide_non_musical">הסתרת סרטונים שאינם מוזיקה</string>
     <string name="puremusic_hide_non_musical_description">השארת קליפים רשמיים והסתרת תוכן וידאו אחר, כמו בלוגים וטריילרים</string>
     <string name="puremusic_skip">דלג</string>
-    <string name="puremusic_home_title">אלבומים מאמנים מאושרים</string>
+    <string name="puremusic_home_title">מהרשימה המאושרת שלך</string>
     <string name="puremusic_home_empty">אין עדיין אלבומים להצגה.
 הוסף אמנים מאושרים בהגדרות &gt; בקרה וניהול.</string>
     <string name="puremusic_refresh">רענון</string>
@@ -71,4 +71,7 @@
     <string name="puremusic_skip_message">כל המוזיקה, התמונות והתכונות יהיו זמינות ללא הגבלה. אפשר להפעיל סינון בהמשך בהגדרות &gt; בקרה וניהול.</string>
     <string name="puremusic_skip_confirm">אני מבין, המשך בלי סינון</string>
     <string name="puremusic_cancel">ביטול</string>
+    <string name="puremusic_kind_artist">אמן</string>
+    <string name="puremusic_kind_podcast">פודקאסט</string>
+    <string name="puremusic_kind_channel">ערוץ</string>
 </resources>

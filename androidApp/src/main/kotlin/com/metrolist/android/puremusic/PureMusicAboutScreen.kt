@@ -68,7 +68,8 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val DEVELOPER_NAME = "Ashi Vered"
 private const val DEVELOPER_GITHUB = "https://github.com/AshiVered"
-private const val DEVELOPER_AVATAR = "https://github.com/AshiVered.png"
+/** Shown even while images are hidden (see [PureMusicImageInterceptor]). */
+internal const val DEVELOPER_AVATAR = "https://github.com/AshiVered.png"
 private const val REPOSITORY_URL = "https://github.com/AshiVered/PureMusic"
 private const val LICENSE_URL = "https://github.com/AshiVered/PureMusic/blob/main/LICENSE"
 private const val ORIGINAL_URL = "https://github.com/MetrolistGroup/Metrolist"
@@ -157,7 +158,6 @@ fun PureMusicAboutScreen(
                             color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             modifier = Modifier.size(90.dp),
                         ) {
-                            // Hidden automatically when PureMusic images are off.
                             AsyncImage(
                                 model = DEVELOPER_AVATAR,
                                 contentDescription = DEVELOPER_NAME,
