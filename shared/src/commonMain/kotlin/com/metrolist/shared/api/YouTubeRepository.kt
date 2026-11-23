@@ -89,6 +89,7 @@ import com.metrolist.shared.playlist.PlaylistChanges
 import com.metrolist.shared.settings.BlockedContent
 import com.metrolist.shared.settings.Settings
 import com.metrolist.shared.state.SongLikeState
+import com.metrolist.shared.state.youTubeLanguage
 import com.metrolist.shared.utils.Logger
 import com.metrolist.shared.viewmodels.LIBRARY_REFRESH_TTL_MILLIS
 import com.metrolist.shared.youtube.logging.YtLogger
@@ -192,6 +193,7 @@ data class SongWatchInformation(
     val subscriberCount: String? = null,
     val likeCount: Long? = null,
     val viewCount: Long? = null,
+    val uploadDate: String? = null,
     val description: String? = null,
 )
 
@@ -958,6 +960,12 @@ class YouTubeRepository(
         applyContentFilters: Boolean = true,
     ): PlaylistPage {
         if (!initial.hasMore) return initial.also { rememberPlaylistMembership(it, applyContentFilters) }
+        // Mix continuations keep generating songs and never end, so the loaded pages are the whole mix.
+        val header = initial.sections["header"]?.filterIsInstance<PlaylistItem>()?.firstOrNull()
+        if (header?.id?.isMixPlaylistId() == true) {
+            requireCurrentSession(initial.session)
+            return initial.copy(pending = emptyList())
+        }
         val sections = linkedMapOf<String, MutableList<YTItem>>()
         var last = initial
         playlistPages(initial, applyContentFilters).collect { page ->
@@ -1755,7 +1763,7 @@ class YouTubeRepository(
     ): SongWatchInformation? {
         val session = innerTube.sessionSnapshot()
         val requestTube = innerTube.createIsolatedSession(true)
-        requestTube.locale = requestTube.locale.copy(hl = languageTag)
+        requestTube.locale = requestTube.locale.copy(hl = youTubeLanguage(languageTag))
         return try {
             val response =
                 requestTube.next(YouTubeClient.WEB, videoId = videoId).bodyLimited<JsonObject>(PLAYER_NEXT_RESPONSE_LIMIT)
@@ -1767,6 +1775,15 @@ class YouTubeRepository(
                     ?.get("videoOwnerRenderer")
                     .asObject()
             val likeEntity = response.findFirstObject("likeCountEntity")
+            // WEB now sends an unset likeCountEntity; the exact count is only in the like button's accessibility text.
+            val likeButton =
+                response
+                    .findFirstObject("segmentedLikeDislikeButtonViewModel")
+                    ?.get("likeButtonViewModel")
+                    .asObject()
+                    ?.findFirstObject("defaultButtonViewModel")
+                    ?.get("buttonViewModel")
+                    .asObject()
             val viewEntity = response.findFirstObject("viewCountEntity")
 
             SongWatchInformation(
@@ -1786,10 +1803,17 @@ class YouTubeRepository(
                     likeEntity?.longValue("likeCountIfIndifferentNumber")
                         ?: likeEntity?.longValue("likeCountIfLikedNumber")
                         ?: likeEntity?.get("expandedLikeCountIfIndifferent").textContent().parseIntegerCount()
-                        ?: likeEntity?.get("expandedLikeCountIfLiked").textContent().parseIntegerCount(),
+                        ?: likeEntity?.get("expandedLikeCountIfLiked").textContent().parseIntegerCount()
+                        ?: likeButton?.get("accessibilityText").primitiveText().parseIntegerCount(),
                 viewCount =
                     viewEntity?.longValue("viewCountNumber")
                         ?: viewEntity?.get("unlabeledViewCountValue").textContent().parseIntegerCount(),
+                uploadDate =
+                    response
+                        .findFirstObject("videoPrimaryInfoRenderer")
+                        ?.get("dateText")
+                        .textContent()
+                        ?.takeIf { it.isNotBlank() },
                 description =
                     secondaryInfo
                         ?.get("attributedDescription")
@@ -1805,7 +1829,8 @@ class YouTubeRepository(
             ).also { requireCurrentSession(session) }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            YtLogger.w(TAG, "getSongWatchInformation failed type=${e::class.simpleName ?: "unknown"}")
             null
         } finally {
             requestTube.close()
