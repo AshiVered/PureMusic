@@ -198,8 +198,10 @@
     <string name="delete">Delete</string>
     <!-- Translators: Imperative action label for remove from queue in the desktop player and playback queue. -->
     <string name="remove_from_queue">Remove from queue</string>
-    <!-- Translators: Imperative action label for online in the search. -->
+    <!-- Translators: Button in the manual lyrics search dialog that opens a web search for the song's lyrics. -->
     <string name="search_online">Search online</string>
+    <!-- Translators: Short form of Search online, used when the full label does not fit beside Cancel and Search in the manual lyrics search dialog. Keep it to one short word if possible. -->
+    <string name="search_online_short">Online</string>
 
     <!-- Sort menu -->
     <!-- Translators: Label for sort by create date in the Home and browse screens and Library. -->
@@ -244,6 +246,8 @@
     <string name="lyrics_youtube_captions">YouTube Captions</string>
     <!-- Translators: Title of the manual lyrics search dialog. -->
     <string name="search_lyrics">Search lyrics</string>
+    <!-- Translators: Web search query sent by Search online in the manual lyrics search dialog. %1$s is the artist; %2$s is the song title. Translate "lyrics" and reorder the parts as a search in your language would read. -->
+    <string name="lyrics_search_online_query">%1$s %2$s lyrics</string>
     <!-- Translators: Imperative action label for select songs in the media item menus. -->
     <string name="select_songs">Select songs</string>
 
@@ -1146,6 +1150,10 @@
     <string name="appearance_swipe_song_gesture_playlists">Swipe song gesture in playlists</string>
     <!-- Translators: Supporting text beneath the swipe song gesture playlists option in the Appearance settings. -->
     <string name="appearance_swipe_song_gesture_playlists_description">Swipe on a song to remove it from a playlist</string>
+    <!-- Translators: Option or section label for swipe song gesture in queue in the Appearance settings. -->
+    <string name="appearance_swipe_song_gesture_queue">Swipe song gesture in queue</string>
+    <!-- Translators: Supporting text beneath the swipe song gesture in queue option in the Appearance settings. The swipe moves toward the start edge (left in LTR layouts, right in RTL layouts). -->
+    <string name="appearance_swipe_song_gesture_queue_description">Swipe a song toward the start edge to remove it from the queue even when locked</string>
     <!-- Translators: Option or section label for enable haptic feedback in the Appearance settings. -->
     <string name="appearance_enable_haptic_feedback">Haptic feedback</string>
     <!-- Translators: Supporting text beneath the enable haptic feedback option in the Appearance settings. -->
@@ -1566,6 +1574,10 @@
     <string name="hide_podcasts">Hide podcasts</string>
     <!-- Translators: Supporting text beneath the hide podcasts option in the settings. -->
     <string name="hide_podcasts_desc">Hide podcasts and episodes from browsing, search, and playback</string>
+    <!-- Translators: Imperative action label for hiding playlist recommendations in the settings. -->
+    <string name="hide_playlist_recommendations">Hide playlist recommendations</string>
+    <!-- Translators: Supporting text beneath the hide playlist recommendations option in the settings. -->
+    <string name="hide_playlist_recommendations_desc">Hide recommended songs shown below playlists</string>
     <!-- Translators: Imperative action label for hide short songs in the settings. -->
     <string name="hide_short_songs">Hide short songs</string>
     <!-- Translators: Supporting text beneath the hide short songs option in the settings. -->
@@ -5256,6 +5268,11 @@
 <string name="metroeq_preset_rock">Rock</string>
 <string name="metroeq_save_as">Save as</string>
 <string name="metroeq_preset_bass">Bass boost</string>
+    <string name="metroeq_preset_commute">Commute</string>
+    <string name="metroeq_preset_loudness">Loudness</string>
+    <string name="metroeq_preset_pop">Pop</string>
+    <string name="metroeq_preset_electronic">Electronic</string>
+    <string name="metroeq_preset_acoustic">Acoustic</string>
 <string name="metroeq_presets">Presets</string>
     <string name="cast_discovery_failed">Could not search for Cast devices. Close and reopen the device picker to try again.</string>
     <string name="listen_together_pending_approvals">Pending approvals</string>

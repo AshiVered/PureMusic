@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.metrolist.shared.api.lyrics.AiProviderPresets
+import com.metrolist.shared.auth.hasSupportedYouTubeAuthCookie
 import com.metrolist.shared.backup.AutoBackupFrequency
 import com.metrolist.shared.constants.ActiveLyricsTextPositionKey
 import com.metrolist.shared.constants.AiSlopBlocklistCacheKey
@@ -97,6 +98,7 @@ import com.metrolist.shared.constants.HiddenHomeItemsJsonKey
 import com.metrolist.shared.constants.HiddenHomeUndoHintShownKey
 import com.metrolist.shared.constants.HiddenLibraryUndoHintShownKey
 import com.metrolist.shared.constants.HideNonMusicalVideosKey
+import com.metrolist.shared.constants.HidePlaylistRecommendationsKey
 import com.metrolist.shared.constants.HideRecentSearchesKey
 import com.metrolist.shared.constants.HideShortSongsKey
 import com.metrolist.shared.constants.HistoryPlaylistsEnabledKey
@@ -136,6 +138,7 @@ import com.metrolist.shared.constants.LyricsPlusLighterKey
 import com.metrolist.shared.constants.LyricsProgressiveBlurKey
 import com.metrolist.shared.constants.LyricsShareImageStyleKey
 import com.metrolist.shared.constants.LyricsShowOriginalLyricsKey
+import com.metrolist.shared.constants.LyricsYoutubeCaptionsEnabledKey
 import com.metrolist.shared.constants.MatugenThemeKey
 import com.metrolist.shared.constants.MinimumSongDurationSecondsKey
 import com.metrolist.shared.constants.MusicVideoCacheJsonKey
@@ -194,6 +197,7 @@ import com.metrolist.shared.constants.SponsorBlockEnabledKey
 import com.metrolist.shared.constants.SupportPromptDismissedKey
 import com.metrolist.shared.constants.SupportPromptLaunchThresholdKey
 import com.metrolist.shared.constants.SupportPromptLaunchesKey
+import com.metrolist.shared.constants.SwipeToRemoveFromQueueKey
 import com.metrolist.shared.constants.SwipeToRemoveSongKey
 import com.metrolist.shared.constants.SwipeToSongKey
 import com.metrolist.shared.constants.TempoPitchPresetsJsonKey
@@ -328,6 +332,7 @@ class Settings(
     var hideVideoSongs by preference(false)
     var hideNonMusicalVideos by preference(HideNonMusicalVideosKey, false)
     var hidePodcasts by preference(false)
+    var hidePlaylistRecommendations by preference(HidePlaylistRecommendationsKey, false)
     var hideShortSongs by preference(HideShortSongsKey, false)
     var minimumSongDurationSeconds by preference(MinimumSongDurationSecondsKey, 30)
     var blockAiSlopArtists by preference(BlockAiSlopArtistsKey, true)
@@ -500,6 +505,7 @@ class Settings(
     var lyricsAutoScroll by preference(true)
     var lyricsProviderOrder by preference(LyricsProvider.userConfigurable.joinToString(",") { it.name })
     var lyricsEnabledProviders by preference("")
+    var lyricsYoutubeCaptionsEnabled by preference(LyricsYoutubeCaptionsEnabledKey, true)
     var preferWordSyncedLyrics by preference(PreferWordSyncedLyricsKey, false)
     var canvasContentOrder by preference(CanvasContentOrderKey, "YOUTUBE_MUSIC_VIDEO,SPOTIFY_CANVAS,APPLE_MUSIC")
     var canvasEnabledSources by preference(CanvasEnabledSourcesKey, "")
@@ -709,8 +715,12 @@ class Settings(
     var swipeSensitivity by preference(73f)
     var swipeToSong by preference(SwipeToSongKey, false)
     var swipeToRemoveSong by preference(SwipeToRemoveSongKey, false)
+    var swipeToRemoveFromQueue by preference(SwipeToRemoveFromQueueKey, false)
     var autoLoadMore by preference(true)
     var classicRecommendations by preference(ClassicRecommendationsKey, false)
+    val useLocalHomeRecommendations: Boolean
+        get() = classicRecommendations || !hasSupportedYouTubeAuthCookie(innerTubeCookie)
+
     var disableLoadMoreWhenRepeatAll by preference(false)
     var preventDuplicateTracksInQueue by preference(false)
     var innerTubeCookie by preference("")

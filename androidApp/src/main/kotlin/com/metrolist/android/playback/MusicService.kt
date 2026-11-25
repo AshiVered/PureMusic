@@ -38,6 +38,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaConstants
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
@@ -278,6 +279,7 @@ class MusicService :
     private val binder = MusicBinder()
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val taskRemoved = MutableStateFlow(false)
+    private var playbackServiceRequired: StateFlow<Boolean>? = null
     private val listenTogetherForegroundRequired = MutableStateFlow(false)
     private val roomForegroundOwner = RoomForegroundOwner()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -714,12 +716,10 @@ class MusicService :
                 ) { requested, loading, cast, devices, room ->
                     requested || loading || cast.isConnected || room ||
                         devices.peers.any { it.state == DeviceConnectManager.PeerState.CONNECTED }
-                }
+                }.stateIn(this)
+            playbackServiceRequired = playbackRequired
             observePlaybackServiceLifetime(taskRemoved, playbackRequired, snapshotFlow { Settings.shared.stopMusicOnTaskClear }) {
-                saveFinalPlaybackState()?.join()
-                isRunning = false
-                running.value = false
-                pauseAllPlayersAndStopSelf()
+                stopPlaybackService()
             }
         }
         serviceScope.launch {
@@ -737,6 +737,21 @@ class MusicService :
                 }
         }
     }
+
+    private suspend fun stopPlaybackService(stillUnneeded: () -> Boolean = { true }) {
+        saveFinalPlaybackState()?.join()
+        if (!stillUnneeded()) return
+        isRunning = false
+        running.value = false
+        pauseAllPlayersAndStopSelf()
+    }
+
+    private fun dismissalMayEndService(): Boolean =
+        playbackServiceRequired?.value == false &&
+            !ProcessLifecycleOwner
+                .get()
+                .lifecycle.currentState
+                .isAtLeast(Lifecycle.State.STARTED)
 
     private fun shouldPauseLocalPlaybackInBackground(): Boolean =
         isAndroidTv() &&
@@ -2265,14 +2280,17 @@ class MusicService :
         request: QueuePlaybackRequest,
     ) {
         val available = audioCacheManager.cachedSongIds(player.songQueue.value.mapTo(mutableSetOf()) { it.id })
+        // Read the queue after the lookup suspends, so a queue move meanwhile cannot shift the chosen index.
+        val songs = player.songQueue.value
+        val currentIndex = player.currentMediaItemIndex.value
+        val repeatAll = _repeatMode.value == Player.REPEAT_MODE_ALL
+        val isPlayable: suspend (SongItem) -> Boolean = { song ->
+            song.isLocal || song.id.startsWith("local_") || song.id in available
+        }
+        // Previous keeps moving backwards; without an earlier playable track it returns forwards as before.
         val next =
-            nextOfflineQueueIndex(
-                player.songQueue.value,
-                player.currentMediaItemIndex.value,
-                _repeatMode.value == Player.REPEAT_MODE_ALL,
-            ) { song ->
-                song.isLocal || song.id.startsWith("local_") || song.id in available
-            }
+            nextOfflineQueueIndex(songs, currentIndex, repeatAll, backward = request.backward, isPlayable = isPlayable)
+                ?: if (request.backward) nextOfflineQueueIndex(songs, currentIndex, repeatAll, isPlayable = isPlayable) else null
         if (!isCurrentQueueRequest(sessionId, request)) return
         if (next != null && !AndroidListenTogetherManager.isGuestPlaybackLocked && !AndroidDeviceConnect.manager.remote.isActive) {
             player.skipToQueueItem(next, resumePlayback = player.wantsPlayback)
@@ -2944,6 +2962,16 @@ class MusicService :
         )
     }
 
+    fun playSongRadio(
+        song: SongItem,
+        startPositionMs: Long,
+        startPlaying: Boolean,
+        startVideo: Boolean,
+    ) {
+        playbackBenchmark.cancel()
+        queueCoordinator.playSongRadio(song, startPositionMs, startPlaying, startVideo)
+    }
+
     suspend fun playQueueFromRemote(
         songs: List<SongItem>,
         startIndex: Int,
@@ -3274,6 +3302,20 @@ class MusicService :
     }
 
     private inner class AutomotiveSessionCallback : MediaLibrarySession.Callback {
+        override fun onMediaButtonEvent(
+            session: MediaSession,
+            controllerInfo: MediaSession.ControllerInfo,
+            intent: Intent,
+        ): Boolean {
+            // Media3 stops the player on dismissal, which closes it and resets the position; ending the service keeps both for restore.
+            if (intent.getBooleanExtra(MediaNotification.NOTIFICATION_DISMISSED_EVENT_KEY, false) && dismissalMayEndService()) {
+                // The save is async; reopening the app or pressing play meanwhile must keep the service.
+                serviceScope.launch { stopPlaybackService(::dismissalMayEndService) }
+                return true
+            }
+            return super.onMediaButtonEvent(session, controllerInfo, intent)
+        }
+
         override fun onConnectAsync(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,

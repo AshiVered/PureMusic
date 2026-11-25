@@ -129,6 +129,8 @@ Song and artwork carousels have no horizontal scrollbars. Only desktop Home rows
 
 Android selects desktop mode for desk/DeX windows and for large windows with a mouse. Touchpad-only keyboard covers keep tablets on the mobile layout. Desktop mode uses the desktop player bar when the window's smallest width reaches Material's 600 dp medium-width breakpoint. Landscape phones keep the mobile mini-player even when Android reports a pointer device.
 
+The Android manifest retains v13's audio app category and explicit `resizeableActivity="true"` on `MainActivity`. Android distinguishes declared resizing from resizing inferred from the target SDK. [Samsung recommends an explicit declaration for multi-window support](https://developer.samsung.com/samsung-dex/modify-optimizing.html). Launcher aliases inherit the target activity's resizing support. Keep these declarations when changing Android entry points.
+
 Android 15+ windows with a mouse or touchpad place search and the account menu in the transparent system caption bar at every width; narrow captions use a search icon. Touch-only floating windows keep the account menu in the app bar and place content below the caption. Home and Library count the caption inset once. The layout reserves the system-reported app-menu and window-control bounds; only interactive app controls exclude caption drag gestures.
 
 Player-driven keyboard suppression in Android search uses actual expansion; transient sheet progress during keyboard resizing must not dismiss the keyboard. TV navigation focus stays blocked while the player is expanding.
@@ -345,7 +347,7 @@ LyricsPlus and Zemer are not lookup providers. Stored provider settings drop the
 
 Each candidate includes cached translations and dictionary-free romanization before display. When romanization dictionary preparation is needed and nothing is displayed, plain lyrics publish first. Enrichment replaces only the displayed entries and keeps source timestamps. Cancelled requests and late enrichment cannot overwrite newer results. Songwriter lookups run independently.
 
-The shared player keeps empty results loading until the request releases its deduplication key. In the **Refetch** menu, **Automatic** bypasses the saved provider result and uses the configured lookup. Picking a provider searches only that provider and shows its candidates in the existing source picker. Empty or failed refreshes keep the displayed lyrics. Player captions request lyrics when enabled, but hidden mobile players do not. Next-song prefetch requires full lyrics or subtitles.
+The shared player keeps empty results loading until the request releases its deduplication key. Refetch bypasses the saved result; empty or failed refreshes keep the displayed lyrics. Player captions request lyrics when enabled, but hidden mobile players do not. Next-song prefetch requires full lyrics or subtitles.
 
 ### Timing
 
@@ -355,7 +357,7 @@ Activation uses scroll lookahead and per-line overlap handling unless "Highlight
 
 ### Manual search and editing
 
-Manual search opens a title and artist dialog, then a provider picker. All providers search in parallel, including disabled ones and the fixed User and YouTube sources; completed groups with results appear in settings order. Dismissing, selecting or changing tracks cancels pending requests. Custom queries omit the track's video ID, album and duration.
+Manual search opens a title and artist dialog, then a provider picker. On Android, the dialog's Search online button sends the artist and title as a localized lyrics query to the system web search app. Desktop and iOS have no system web search, so the button is hidden there. All providers search in parallel, including disabled ones and the fixed User and YouTube sources; completed groups with results appear in settings order. Dismissing, selecting or changing tracks cancels pending requests. Custom queries omit the track's video ID, album and duration.
 
 The shared full-screen editor opens the active lyrics as MLX v2 JSON behind a timestamped text field: `[mm:ss.cc] text`, or three fractional digits for millisecond sources. Word-synced lines use inline tags such as `[00:08.20] <00:08.20>word <00:08.51>tags`. `\n`, `\r`, `\\`, `\<` and `\>` are escapes. Timing buttons shift selected lines by half a second.
 
